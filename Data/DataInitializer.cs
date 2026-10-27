@@ -19,7 +19,8 @@ public static class DataInitializer
     {
         using var db = services.GetRequiredService<SiteDbContext>();
 
-        // 1. Schema: EnsureCreated + Migrate (kan niet op een schone server falen).
+        // 1. Schema: EnsureCreated (nieuwe databases) + migratiegeschiedenis
+        //    + veilige aanmaak van recente tabellen + Migrate voor oudere databases.
         try
         {
             db.Database.EnsureCreated();
@@ -27,6 +28,26 @@ public static class DataInitializer
         catch (Exception ex)
         {
             Log(services, LogLevel.Error, ex, "EnsureCreated() mislukt.");
+        }
+
+        try
+        {
+            VulMigratiegeschiedenisAan(db);
+        }
+        catch (Exception ex)
+        {
+            Log(services, LogLevel.Error, ex, "Migratiegeschiedenis kan niet worden aangevuld.");
+        }
+
+        // Oudere EnsureCreated-databases missen de nieuwste tabellen; die worden hier
+        // expliciet bijgemaakt zodat Migrate() niet op een halffabriek-strand oord Eindigt.
+        try
+        {
+            MaakOntbrekendeTabellenAan(db);
+        }
+        catch (Exception ex)
+        {
+            Log(services, LogLevel.Error, ex, "Ontbrekende tabellen kunnen niet worden aangemaakt.");
         }
 
         try
@@ -53,6 +74,84 @@ public static class DataInitializer
         catch (Exception ex)
         {
             Log(services, LogLevel.Error, ex, "Standaarddata-injectie mislukt; de site start zonder volledige data.");
+        }
+    }
+
+    /// <summary>
+    /// Databases die ooit via EnsureCreated zijn opgebouwd hebben geen
+    /// __EFMigrationsHistory-tabel; zonder deze stempel probeert Migrate() alle
+    /// migraties opnieuw en crasht het op reeds bestaande kolommen/tabellen.
+    /// De stempel zet alle al-bestaande migraties als toegepast, zodat alleen
+    /// écht nieuwe migraties nog worden uitgevoerd.
+    /// </summary>
+    private static void VulMigratiegeschiedenisAan(SiteDbContext db)
+    {
+        var connectie = (Microsoft.Data.Sqlite.SqliteConnection)db.Database.GetDbConnection();
+        using var opdracht = connectie.CreateCommand();
+
+        opdracht.CommandText =
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory'";
+        var bestaatAl = Convert.ToInt64(opdracht.ExecuteScalar()) > 0;
+        if (!bestaatAl)
+        {
+            opdracht.CommandText =
+                """CREATE TABLE "__EFMigrationsHistory" ("MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY, "ProductVersion" TEXT NOT NULL);""";
+            opdracht.ExecuteNonQuery();
+
+            opdracht.CommandText =
+                """INSERT OR IGNORE INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") VALUES (@nr, @v);""";
+            var nr = opdracht.Parameters.Add("@nr", Microsoft.Data.Sqlite.SqliteType.Text);
+            var v = opdracht.Parameters.Add("@v", Microsoft.Data.Sqlite.SqliteType.Text);
+            var versie = typeof(SiteDbContext).Assembly.GetName().Version!.ToString(3);
+            foreach (var migratie in db.Database.GetMigrations())
+            {
+                nr.Value = migratie;
+                v.Value = versie;
+                opdracht.ExecuteNonQuery();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Maakt tabellen van recente migraties expliciet aan op oudere
+    /// EnsureCreated-databases (iets dat de stempel-registratie overslaat).
+    /// </summary>
+    private static void MaakOntbrekendeTabellenAan(SiteDbContext db)
+    {
+        var scripts = new[]
+        {
+            """
+            CREATE TABLE IF NOT EXISTS "FaqItems" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_FaqItems" PRIMARY KEY AUTOINCREMENT,
+                "Vraag" TEXT NOT NULL,
+                "Antwoord" TEXT NOT NULL,
+                "IsGepubliceerd" INTEGER NOT NULL,
+                "Volgorde" INTEGER NOT NULL);
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS "DownloadItems" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_DownloadItems" PRIMARY KEY AUTOINCREMENT,
+                "Titel" TEXT NOT NULL,
+                "Omschrijving" TEXT NULL,
+                "BestandPad" TEXT NOT NULL,
+                "IsGepubliceerd" INTEGER NOT NULL,
+                "Volgorde" INTEGER NOT NULL);
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS "AreiBoeken" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_AreiBoeken" PRIMARY KEY AUTOINCREMENT,
+                "Naam" TEXT NOT NULL,
+                "Slug" TEXT NOT NULL,
+                "Beschrijving" TEXT NULL,
+                "BestandPad" TEXT NULL,
+                "Volgorde" INTEGER NOT NULL);
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_AreiBoeken_Slug" ON "AreiBoeken" ("Slug");
+            """
+        };
+
+        foreach (var script in scripts)
+        {
+            db.Database.ExecuteSqlRaw(script);
         }
     }
 
