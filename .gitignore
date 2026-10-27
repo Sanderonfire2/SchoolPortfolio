@@ -1,3 +1,6 @@
+# Freebuff-meta en dotnet-installscripts
+.freebuff/
+
 # .NET build-output
 bin/
 obj/

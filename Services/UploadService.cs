@@ -6,8 +6,10 @@ namespace SchoolPortfolio.Services;
 
 public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> logger)
 {
+    // .svg is bewust uitgesloten: een QA-upload kan scriptcode bevatten (opgeslagen XSS).
+    // Eerste-SVG's die de site zelf gebruikt, staan statisch in wwwroot/img.
     private static readonly string[] ToegestaneBeelden =
-        [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
+        [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 
     private static readonly string[] ToegestaneVideos =
         [".mp4", ".webm", ".mov"];

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortfolio.Data;
 using SchoolPortfolio.Models;
@@ -50,6 +51,7 @@ public class HomeController(SiteDbContext db) : Controller
     [Route("contact")]
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("contactformulier")]
     public IActionResult Contact(ContactFormulier formulier)
     {
         if (!ModelState.IsValid)

@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortfolio.Data;
 using SchoolPortfolio.Models;
@@ -16,9 +18,30 @@ namespace SchoolPortfolio.Controllers;
 [Route("admin")]
 public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads) : Controller
 {
-    private string Wachtwoord =>
-        configuratie["Beheer:Wachtwoord"]
-        ?? throw new InvalidOperationException("Beheer:Wachtwoord ontbreekt in de configuratie.");
+    private string Wachtwoord => LeesWachtwoord(configuratie);
+
+    private static string LeesWachtwoord(IConfiguration configuratie)
+    {
+        var wachtwoord = configuratie["Beheer:Wachtwoord"];
+        if (string.IsNullOrWhiteSpace(wachtwoord))
+        {
+            throw new InvalidOperationException(
+                "Het beheerderswachtwoord is niet ingesteld. Zet de omgevingsvariabele Beheer__Wachtwoord " +
+                "(productie) of Beheer:Wachtwoord in appsettings.Development.json (lokale ontwikkeling).");
+        }
+        return wachtwoord;
+    }
+
+    /// <summary>
+    /// Constant-time vergelijking: lekt geen timinginformatie over de lengte/hoeveelheid
+    /// overeenkomsten van het echte wachtwoord.
+    /// </summary>
+    private static bool KomtOvereen(string ingevoerd, string opgeslagen)
+    {
+        var hashIngevoerd = SHA256.HashData(Encoding.UTF8.GetBytes(ingevoerd));
+        var hashOpgeslagen = SHA256.HashData(Encoding.UTF8.GetBytes(opgeslagen));
+        return CryptographicOperations.FixedTimeEquals(hashIngevoerd, hashOpgeslagen);
+    }
 
     /* ---------- Inloggen en uitloggen ---------- */
 
@@ -38,9 +61,10 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     [AllowAnonymous]
     [HttpPost("inloggen")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("inloggen")]
     public async Task<IActionResult> Inloggen(string wachtwoord, string? terug)
     {
-        if (string.IsNullOrWhiteSpace(wachtwoord) || wachtwoord != Wachtwoord)
+        if (string.IsNullOrWhiteSpace(wachtwoord) || !KomtOvereen(wachtwoord, Wachtwoord))
         {
             ModelState.AddModelError(string.Empty, "Onjuist wachtwoord. Probeer opnieuw.");
             ViewBag.TerugUrl = terug;
