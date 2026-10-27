@@ -1,0 +1,78 @@
+@model SchoolPortfolio.Models.FaqItem
+@{
+    var lijst = (List<SchoolPortfolio.Models.FaqItem>)ViewBag.Lijst!;
+    var isNieuw = Model.Id == 0;
+}
+
+<section class="pagina">
+    <div class="container">
+        <h1>FAQ beheren</h1>
+        <p class="tekst-sub">Veelgestelde vragen die op /faq verschijnen. Gebruik de volgordevelden om de volgorde te bepalen.</p>
+        @if (TempData["Melding"] is string melding)
+        {
+            <div class="melding">@melding</div>
+        }
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        <h2>@(isNieuw ? "Nieuwe vraag" : $"Vraag bewerken: {Model.Vraag}")</h2>
+        <form method="post" asp-action="FaqOpslaan">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <div class="veld">
+                <label asp-for="Vraag">Vraag</label>
+                <input asp-for="Vraag" required />
+            </div>
+            <div class="veld">
+                <label asp-for="Antwoord">Antwoord</label>
+                <textarea asp-for="Antwoord" rows="4" required></textarea>
+            </div>
+            <div class="veld veld--klein">
+                <label asp-for="Volgorde">Volgorde</label>
+                <input asp-for="Volgorde" type="number" min="1" />
+            </div>
+            <div class="veld">
+                <label><input asp-for="IsGepubliceerd" type="checkbox" /> Gepubliceerd</label>
+            </div>
+            <button class="knop" type="submit">Opslaan</button>
+            @if (!isNieuw)
+            {
+                <a class="knop knop--stil" href="/admin/faq">Annuleren</a>
+            }
+        </form>
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        <h2>Bestaande vragen (@lijst.Count)</h2>
+        @if (lijst.Count == 0)
+        {
+            <p class="tekst-sub">Nog geen geactiveerde faq-items. Maak er hierboven één aan.</p>
+        }
+        <table class="tabel">
+            <thead>
+                <tr><th>Volgorde</th><th>Vraag</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var item in lijst)
+                {
+                    <tr>
+                        <td>@item.Volgorde</td>
+                        <td>@item.Vraag</td>
+                        <td>@(item.IsGepubliceerd ? "Gepubliceerd" : "Verborgen")</td>
+                        <td class="tabel-acties">
+                            <a class="knop knop--klein" href="/admin/faq/@item.Id/bewerken">Bewerken</a>
+                            <form method="post" asp-action="FaqVerwijderen" asp-route-id="@item.Id" onsubmit="return confirm('Dit faq-item verwijderen?');">
+                                @Html.AntiForgeryToken()
+                                <button class="knop knop--klein knop--gevaar" type="submit">Uitvegen</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

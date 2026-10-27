@@ -15,6 +15,9 @@ public class SiteDbContext(DbContextOptions<SiteDbContext> options) : DbContext(
     public DbSet<Werkervaring> Werkervaringen { get; set; }
     public DbSet<PaginaInhoud> PaginaInhouden { get; set; }
     public DbSet<ContactBericht> ContactBerichten { get; set; }
+    public DbSet<FaqItem> FaqItems { get; set; }
+    public DbSet<DownloadItem> DownloadItems { get; set; }
+    public DbSet<AreiBoek> AreiBoeken { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,5 +31,6 @@ public class SiteDbContext(DbContextOptions<SiteDbContext> options) : DbContext(
         modelBuilder.Entity<Rapport>().HasIndex(r => r.Datum);
         modelBuilder.Entity<Rapport>().HasIndex(r => r.StageId);
         modelBuilder.Entity<Rapport>().HasIndex(r => r.PovLocatieId);
+        modelBuilder.Entity<AreiBoek>().HasIndex(b => b.Slug).IsUnique();
     }
 }

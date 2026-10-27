@@ -199,6 +199,67 @@ public static class DataInitializer
             inhoudKeys.Add(i.Sleutel);
         }
 
+        // --- Starter-FAQ: alleen bij een lege FaqItems-tabel, zodat admin-wijzigingen veilig zijn ---
+        if (!db.FaqItems.Any())
+        {
+            var starterVragen = new (string Vraag, string Antwoord)[]
+            {
+                ("Wie is Sander van Praet?",
+                 "Sander van Praet is student elektriciteit. Op deze site vind je zijn schoolcarrière, projecten, stageverslagen en POV-dagrapporten."),
+                ("Wat kun je op deze site vinden?",
+                 "Projecten per schooljaar en vak, stage-ervaring, POV-locaties met dagrapporten, opleidingen, werkervaring, de AREI-reglementen en extra downloads."),
+                ("Wat is de AREI?",
+                 "Het Algemeen Reglement op de Elektrische Installaties (AREI) is het Belgische veiligheidsreglement voor elektrische installaties. Boek 1 geldt voor laagspanning en zeer lage spanning, Boek 2 voor hoogspanning en Boek 3 voor transmissie en distributie."),
+                ("Kan ik documenten downloaden?",
+                 "Ja, op de downloads-pagina en bij de AREI-boeken kun je de pdf's openen in de browser of opslaan."),
+                ("Hoe kan ik contact opnemen?",
+                 "Via het contactformulier op de contactpagina of via de e-mail in de voettekst. Berichten komen rechtstreeks in het beheerdersgedeelte terecht.")
+            };
+            var faqVolgorde = 1;
+            foreach (var (vraag, antwoord) in starterVragen)
+            {
+                db.FaqItems.Add(new FaqItem
+                {
+                    Vraag = vraag,
+                    Antwoord = antwoord,
+                    IsGepubliceerd = true,
+                    Volgorde = faqVolgorde++
+                });
+            }
+        }
+
+        // --- AREI-boeken (op slug); BestandPad verwijst statisch naar wwwroot/downloaden/arei ---
+        var areiSlugs = db.AreiBoeken.Select(b => b.Slug).ToHashSet();
+        var areiStandaard = new (string Naam, string Slug, string Pad, string Beschrijving)[]
+        {
+            ("Boek 1 · Installaties op laagspanning en op zeer lage spanning",
+             "boek-1-laagspanning",
+             "/downloaden/arei/boek-1-installaties-op-laagspanning-en-op-zeer-lage-spanning.pdf",
+             "Installaties op laagspanning en op zeer lage spanning — editie 2026."),
+            ("Boek 2 · Installaties op hoogspanning",
+             "boek-2-hoogspanning",
+             "/downloaden/arei/boek-2-installaties-op-hoogspanning.pdf",
+             "Installaties op hoogspanning — editie 2026."),
+            ("Boek 3 · Installaties voor transmissie en distributie van elektrische energie",
+             "boek-3-transmissie-en-distributie",
+             "/downloaden/arei/boek-3-installaties-voor-transmissie-en-distributie-van-elektrische-energie.pdf",
+             "Installaties voor transmissie en distributie van elektrische energie — editie 2026.")
+        };
+        for (var i = 0; i < areiStandaard.Length; i++)
+        {
+            var (naam, slug, pad, beschrijving) = areiStandaard[i];
+            if (areiSlugs.Contains(slug)) continue;
+            db.AreiBoeken.Add(new AreiBoek
+            {
+                Naam = naam,
+                Slug = slug,
+                Beschrijving = beschrijving,
+                BestandPad = pad,
+                Volgorde = i + 1
+            });
+            areiSlugs.Add(slug);
+        }
+
         // Fase 1 opslaan: nieuwe projecten/pov's krijgen hun echte Id.
         db.SaveChanges();
 

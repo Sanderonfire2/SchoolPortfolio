@@ -1,0 +1,60 @@
+@using SchoolPortfolio.Data
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = "Downloads";
+    var items = Db.DownloadItems
+        .Where(d => d.IsGepubliceerd)
+        .OrderBy(d => d.Volgorde)
+        .ThenBy(d => d.Id)
+        .ToList();
+    var introductie = Db.PaginaInhouden.Find("intro-downloads")?.Inhoud;
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">Downloads</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">Downloads</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+        else
+        {
+            <p class="hero-intro">Handige documenten en begeleidende bestanden, gratis te openen of op te slaan.</p>
+        }
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        @if (items.Count == 0)
+        {
+            <p class="tekst-sub">Er zijn nog geen downloads beschikbaar.</p>
+        }
+        else
+        {
+            <div class="rapporten-raster">
+                @foreach (var item in items)
+                {
+                    var extensie = System.IO.Path.GetExtension(item.BestandPad).TrimStart('.').ToUpperInvariant();
+                    <article class="rapport-kaart">
+                        <a class="rapport-kaart-premier" href="@item.BestandPad" download>
+                            <div class="rapport-kaart-leeg" aria-hidden="true">
+                                <span class="document-glief">@(string.IsNullOrEmpty(extensie) ? "📄" : "📄")</span>
+                                <span>@(string.IsNullOrEmpty(extensie) ? "bestand" : extensie)</span>
+                            </div>
+                        </a>
+                        <div class="rapport-kaart-info">
+                            <h4>@item.Titel</h4>
+                            @if (!string.IsNullOrWhiteSpace(item.Omschrijving))
+                            {
+                                <p class="tekst-sub">@item.Omschrijving</p>
+                            }
+                            <a class="koppellink" href="@item.BestandPad" download>Downloaden <span class="pijl" aria-hidden="true">↓</span></a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>

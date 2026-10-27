@@ -48,6 +48,15 @@ public class HomeController(SiteDbContext db) : Controller
     [HttpGet]
     public IActionResult Contact() => Uitzicht("Contact", "Contact", new ContactFormulier());
 
+    [Route("faq")]
+    public IActionResult Faq() => Uitzicht("Faq", "FAQ", null);
+
+    [Route("arei")]
+    public IActionResult Arei() => Uitzicht("Arei", "AREI", null);
+
+    [Route("downloads")]
+    public IActionResult Downloads() => Uitzicht("Downloads", "Downloads", null);
+
     [Route("contact")]
     [HttpPost]
     [ValidateAntiForgeryToken]

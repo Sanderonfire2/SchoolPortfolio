@@ -16,9 +16,13 @@ public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> 
 
     private static readonly string[] ToegestaneDocumenten = [".pdf"];
 
+    private static readonly string[] ToegestaneDownloads =
+        [".pdf", ".zip", ".docx", ".xlsx", ".txt", ".png", ".jpg", ".jpeg", ".webp"];
+
     private const long MaximaleGrootte = 8 * 1024 * 1024;   // 8 MB per afbeelding
     private const long MaximaleVideoGrootte = 64 * 1024 * 1024; // 64 MB per video
     private const long MaximaleDocumentGrootte = 16 * 1024 * 1024; // 16 MB per PDF
+    private const long MaximaleDownloadGrootte = 24 * 1024 * 1024; // 24 MB per download
 
     /// <summary>
     /// Slaat een afbeelding op en geeft het publieke pad terug, bijvoorbeeld "/uploads/beeld-gallerij-3f2a.png".
@@ -50,6 +54,17 @@ public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> 
         return await SlaOpInternAsync(bestand, ToegestaneDocumenten, "document", onderwerp);
     }
 
+    /// <summary>
+    /// Slaat een willekeurig downloadbestand op (pdf, zip, office, afbeelding)
+    /// en geeft het publieke pad terug.
+    /// </summary>
+    public async Task<string?> SlaDownloadOpAsync(IFormFile? bestand)
+    {
+        if (bestand is null || bestand.Length == 0) return null;
+
+        return await SlaOpInternAsync(bestand, ToegestaneDownloads, "download", "downloads");
+    }
+
     private async Task<string> SlaOpInternAsync(
         IFormFile bestand, string[] toegestaneExtensies, string soort, string onderwerp)
     {
@@ -64,6 +79,7 @@ public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> 
         }
 
         var maximum = soort == "video" ? MaximaleVideoGrootte
+            : soort == "download" ? MaximaleDownloadGrootte
             : soort == "document" ? MaximaleDocumentGrootte
             : MaximaleGrootte;
         if (bestand.Length > maximum)

@@ -17,6 +17,37 @@ namespace SchoolPortfolio.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
 
+            modelBuilder.Entity("SchoolPortfolio.Models.AreiBoek", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Beschrijving")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BestandPad")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Naam")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("AreiBoeken");
+                });
+
             modelBuilder.Entity("SchoolPortfolio.Models.ContactBericht", b =>
                 {
                     b.Property<int>("Id")
@@ -48,6 +79,59 @@ namespace SchoolPortfolio.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ContactBerichten");
+                });
+
+            modelBuilder.Entity("SchoolPortfolio.Models.DownloadItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BestandPad")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsGepubliceerd")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Omschrijving")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Titel")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DownloadItems");
+                });
+
+            modelBuilder.Entity("SchoolPortfolio.Models.FaqItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Antwoord")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsGepubliceerd")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Vraag")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FaqItems");
                 });
 
             modelBuilder.Entity("SchoolPortfolio.Models.GallerijAfbeelding", b =>

@@ -1,0 +1,54 @@
+@using SchoolPortfolio.Data
+@inject SiteDbContext Db
+@{
+    var lijst = (List<SchoolPortfolio.Models.AreiBoek>)ViewBag.Lijst!;
+}
+
+<section class="pagina">
+    <div class="container">
+        <h1>AREI beheren</h1>
+        <p class="tekst-sub">De drie AREI-boeken die op /arei staan. Hieronder kun je per boek de beschrijving aanpassen en het pdf-bestand vervangen door een nieuw bestand (pdf, max 16 MB).</p>
+        @if (TempData["Melding"] is string melding)
+        {
+            <div class="melding">@melding</div>
+        }
+        @if (TempData["Foutmelding"] is string fout)
+        {
+            <div class="melding melding--fout">@fout</div>
+        }
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        @foreach (var boek in lijst)
+        {
+            <article class="arei-beheer-rij">
+                <h2>@boek.Naam</h2>
+                <p class="tekst-sub">
+                    Bestand:
+                    @if (!string.IsNullOrWhiteSpace(boek.BestandPad))
+                    {
+                        <a href="@boek.BestandPad" target="_blank" rel="noopener">@System.IO.Path.GetFileName(boek.BestandPad)</a>
+                    }
+                    else
+                    {
+                        <em>geen bestand gekoppeld</em>
+                    }
+                </p>
+                <form method="post" asp-action="AreiOpslaan" asp-route-id="@boek.Id" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="veld">
+                        <label for="beschrijving-@boek.Id">Beschrijving</label>
+                        <input type="text" id="beschrijving-@boek.Id" name="beschrijving" value="@boek.Beschrijving" />
+                    </div>
+                    <div class="veld">
+                        <label for="bestand-@boek.Id">Nieuwe pdf (leeg laten = behouden)</label>
+                        <input type="file" id="bestand-@boek.Id" name="bestand" accept=".pdf" />
+                    </div>
+                    <button class="knop" type="submit">Bijwerken</button>
+                </form>
+            </article>
+        }
+    </div>
+</section>

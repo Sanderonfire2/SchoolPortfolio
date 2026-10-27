@@ -1,0 +1,96 @@
+@using SchoolPortfolio.Data
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = "AREI";
+    var boeken = Db.AreiBoeken.OrderBy(b => b.Volgorde).ToList();
+    var introductie = Db.PaginaInhouden.Find("intro-arei")?.Inhoud;
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">AREI</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">AREI-reglementen</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+        else
+        {
+            <p class="hero-intro">Het Algemeen Reglement op de Elektrische Installaties (AREI) is het Belgische veiligheidsreglement voor elektrische installaties. De drie boeken staan hieronder volledig klaar: in de browser lezen of als pdf opslaan.</p>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            var boeken = document.querySelectorAll("[data-arei-boek]");
+            boeken.forEach(function (boek) {
+                var los = boek.querySelector("[data-onlyweergeef]");
+                if (!los) return;
+                los.addEventListener("click", function () {
+                    var iframe = boek.querySelector("iframe");
+                    var raster = boek.querySelector(".arei-weergave");
+                    var open = iframe.hasAttribute("hidden");
+                    if (open) {
+                        iframe.removeAttribute("hidden");
+                        raster.removeAttribute("hidden");
+                        los.dataset.label = "Inlezen sluiten";
+                    } else {
+                        iframe.setAttribute("hidden", "");
+                        raster.setAttribute("hidden", "");
+                        los.dataset.label = "In de browser inlezen";
+                    }
+                });
+            });
+        })();
+    </script>
+}
+
+@if (!boeken.Any(b => !string.IsNullOrWhiteSpace(b.BestandPad)))
+{
+    <section class="pagina" style="padding-top:0;">
+        <div class="container">
+            <p class="tekst-sub">De AREI-boeken worden binnenkort aangevuld.</p>
+        </div>
+    </section>
+}
+else
+{
+    foreach (var boek in boeken)
+    {
+        <section class="pagina" style="padding-top:0;" id="@boek.Slug" data-arei-boek>
+            <div class="container">
+                <article class="arei-kaart">
+                    <div class="arei-kop">
+                        <div>
+                            <h2 style="font-size:clamp(1.4rem,3vw,2rem); margin-bottom:0.3rem;">@boek.Naam</h2>
+                            @if (!string.IsNullOrWhiteSpace(boek.Beschrijving))
+                            {
+                                <p class="tekst-sub">@boek.Beschrijving</p>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(boek.BestandPad))
+                        {
+                            <div class="arei-knepen">
+                                <a class="knop knop--klein" href="@boek.BestandPad" download>Downloaden (pdf)</a>
+                                <button class="knop knop--klein knop--stil" type="button" data-onlyweergeef data-label="In de browser inlezen">In de browser inlezen</button>
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(boek.BestandPad))
+                    {
+                        <div class="arei-weergave" hidden>
+                            <iframe src="@boek.BestandPad" title="@(boek.Naam) — pdf" loading="lazy"></iframe>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="tekst-sub" style="font-style:italic;">Dit boek is momenteel niet beschikbaar.</p>
+                    }
+                </article>
+            </div>
+        </section>
+    }
+}

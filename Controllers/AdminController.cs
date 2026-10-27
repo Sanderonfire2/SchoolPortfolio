@@ -872,6 +872,195 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         return RedirectToAction(nameof(Inhoud));
     }
 
+    /* ---------- FAQ ---------- */
+
+    [HttpGet("faq")]
+    public IActionResult Faq()
+    {
+        ViewData["Titel"] = "FAQ beheren";
+        ViewBag.Lijst = db.FaqItems.OrderBy(f => f.Volgorde).ThenBy(f => f.Id).ToList();
+        return View("Faq", new FaqItem());
+    }
+
+    [HttpGet("faq/{id:int}/bewerken")]
+    public IActionResult FaqBewerken(int id)
+    {
+        var item = db.FaqItems.Find(id);
+        if (item is null) return NotFound();
+        ViewData["Titel"] = "FAQ beheren";
+        ViewBag.Lijst = db.FaqItems.OrderBy(f => f.Volgorde).ThenBy(f => f.Id).ToList();
+        return View("Faq", item);
+    }
+
+    [HttpPost("faq/opslaan")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> FaqOpslaan(FaqItem formulier)
+    {
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Lijst = db.FaqItems.OrderBy(f => f.Volgorde).ThenBy(f => f.Id).ToList();
+            return View("Faq", formulier);
+        }
+
+        formulier.Vraag = formulier.Vraag.Trim();
+        formulier.Antwoord = formulier.Antwoord.Trim();
+
+        if (formulier.Id == 0)
+        {
+            formulier.Volgorde = db.FaqItems.Count() + 1;
+            db.FaqItems.Add(formulier);
+        }
+        else
+        {
+            var item = await db.FaqItems.FindAsync(formulier.Id);
+            if (item is null) return NotFound();
+            item.Vraag = formulier.Vraag;
+            item.Antwoord = formulier.Antwoord;
+            item.IsGepubliceerd = formulier.IsGepubliceerd;
+            item.Volgorde = formulier.Volgorde;
+        }
+
+        db.SaveChanges();
+        TempData["Melding"] = "FAQ-item opgeslagen.";
+        return RedirectToAction(nameof(Faq));
+    }
+
+    [HttpPost("faq/{id:int}/verwijderen")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> FaqVerwijderen(int id)
+    {
+        var item = await db.FaqItems.FindAsync(id);
+        if (item is not null)
+        {
+            db.FaqItems.Remove(item);
+            db.SaveChanges();
+            TempData["Melding"] = "FAQ-item verwijderd.";
+        }
+        return RedirectToAction(nameof(Faq));
+    }
+
+    /* ---------- Downloads ---------- */
+
+    [HttpGet("downloads")]
+    public IActionResult Downloads()
+    {
+        ViewData["Titel"] = "Downloads beheren";
+        ViewBag.Lijst = db.DownloadItems.OrderBy(d => d.Volgorde).ThenBy(d => d.Id).ToList();
+        return View("Downloads", new DownloadItem());
+    }
+
+    [HttpGet("downloads/{id:int}/bewerken")]
+    public IActionResult DownloadsBewerken(int id)
+    {
+        var item = db.DownloadItems.Find(id);
+        if (item is null) return NotFound();
+        ViewData["Titel"] = "Downloads beheren";
+        ViewBag.Lijst = db.DownloadItems.OrderBy(d => d.Volgorde).ThenBy(d => d.Id).ToList();
+        return View("Downloads", item);
+    }
+
+    [HttpPost("downloads/opslaan")]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(24 * 1024 * 1024)]
+    public async Task<IActionResult> DownloadsOpslaan(DownloadItem formulier, IFormFile? bestand)
+    {
+        // Op “bewerken” is een bestaand bestand voldoende; een nieuwe rij MOET een bestand hebben.
+        var nieuwPad = await uploads.SlaDownloadOpAsync(bestand);
+        var bestandLeeg = formulier.Id == 0 && string.IsNullOrWhiteSpace(nieuwPad);
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(formulier.Titel) || bestandLeeg)
+        {
+            if (string.IsNullOrWhiteSpace(formulier.Titel)) ModelState.AddModelError("Titel", "Kies een titel.");
+            if (bestandLeeg) ModelState.AddModelError("BestandPad", "Kies een bestand.");
+            ViewBag.Lijst = db.DownloadItems.OrderBy(d => d.Volgorde).ThenBy(d => d.Id).ToList();
+            return View("Downloads", formulier);
+        }
+
+        formulier.Titel = formulier.Titel.Trim();
+
+        if (formulier.Id == 0)
+        {
+            formulier.BestandPad = nieuwPad!;
+            formulier.Volgorde = db.DownloadItems.Count() + 1;
+            db.DownloadItems.Add(formulier);
+        }
+        else
+        {
+            var item = await db.DownloadItems.FindAsync(formulier.Id);
+            if (item is null) return NotFound();
+            if (nieuwPad is not null)
+            {
+                uploads.Verwijder(item.BestandPad);
+                item.BestandPad = nieuwPad;
+            }
+            item.Titel = formulier.Titel;
+            item.Omschrijving = formulier.Omschrijving;
+            item.IsGepubliceerd = formulier.IsGepubliceerd;
+            item.Volgorde = formulier.Volgorde;
+        }
+
+        db.SaveChanges();
+        TempData["Melding"] = "Download opgeslagen.";
+        return RedirectToAction(nameof(Downloads));
+    }
+
+    [HttpPost("downloads/{id:int}/verwijderen")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DownloadVerwijderen(int id)
+    {
+        var item = await db.DownloadItems.FindAsync(id);
+        if (item is not null)
+        {
+            uploads.Verwijder(item.BestandPad);
+            db.DownloadItems.Remove(item);
+            db.SaveChanges();
+            TempData["Melding"] = "Download verwijderd.";
+        }
+        return RedirectToAction(nameof(Downloads));
+    }
+
+    /* ---------- AREI ---------- */
+
+    [HttpGet("arei")]
+    public IActionResult Arei()
+    {
+        ViewData["Titel"] = "AREI beheren";
+        ViewBag.Lijst = db.AreiBoeken.OrderBy(b => b.Volgorde).ToList();
+        return View("Arei");
+    }
+
+    [HttpPost("arei/{id:int}/opslaan")]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(24 * 1024 * 1024)]
+    public async Task<IActionResult> AreiOpslaan(int id, string beschrijving, IFormFile? bestand)
+    {
+        var boek = await db.AreiBoeken.FindAsync(id);
+        if (boek is null) return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(beschrijving))
+        {
+            boek.Beschrijving = beschrijving.Trim();
+        }
+
+        try
+        {
+            var nieuwPad = await uploads.SlaDocumentOpAsync(bestand, "arei");
+            if (nieuwPad is not null)
+            {
+                uploads.Verwijder(boek.BestandPad);
+                boek.BestandPad = nieuwPad;
+            }
+        }
+        catch (InvalidOperationException fout)
+        {
+            TempData["Foutmelding"] = fout.Message;
+            return RedirectToAction(nameof(Arei));
+        }
+
+        db.SaveChanges();
+        TempData["Melding"] = $"AREI-boek “{boek.Naam}” bijgewerkt.";
+        return RedirectToAction(nameof(Arei));
+    }
+
     /* ---------- Hulprichtlijnen ---------- */
 
     private SelectList Sleutels() => new(

@@ -1,0 +1,52 @@
+@using SchoolPortfolio.Data
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = "FAQ";
+    var items = Db.FaqItems
+        .Where(f => f.IsGepubliceerd)
+        .OrderBy(f => f.Volgorde)
+        .ThenBy(f => f.Id)
+        .ToList();
+    var introductie = Db.PaginaInhouden.Find("intro-faq")?.Inhoud;
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">FAQ</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">Veelgestelde vragen</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+        else
+        {
+            <p class="hero-intro">Antwoorden op de meestgestelde vragen over mijn opleiding, projecten en de documenten op deze site.</p>
+        }
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        @if (items.Count == 0)
+        {
+            <p class="tekst-sub">De veelgestelde vragen worden binnenkort aangevuld.</p>
+        }
+        else
+        {
+            <div class="faq-lijst">
+                @foreach (var item in items)
+                {
+                    <details class="faq-item">
+                        <summary>@item.Vraag</summary>
+                        <div class="faq-antwoord detail-proza">
+                            @foreach (var alinea in item.Antwoord.Split("\n\n"))
+                            {
+                                <p>@alinea</p>
+                            }
+                        </div>
+                    </details>
+                }
+            </div>
+        }
+    </div>
+</section>

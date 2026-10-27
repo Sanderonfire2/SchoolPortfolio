@@ -153,6 +153,41 @@ public class PaginaInhoud
     public bool IsGepubliceerd { get; set; }
 }
 
+/// <summary>Veelgestelde vraag en antwoord, beheerd via /admin/faq.</summary>
+public class FaqItem
+{
+    public int Id { get; set; }
+    public string Vraag { get; set; } = "";
+    public string Antwoord { get; set; } = "";
+    public bool IsGepubliceerd { get; set; } = true;
+    public int Volgorde { get; set; }
+}
+
+/// <summary>Een downloadbaar bestand op de downloads pagina, beheerd via /admin/downloads.</summary>
+public class DownloadItem
+{
+    public int Id { get; set; }
+    public string Titel { get; set; } = "";
+    public string? Omschrijving { get; set; }
+    public string BestandPad { get; set; } = "";
+    public bool IsGepubliceerd { get; set; } = true;
+    public int Volgorde { get; set; }
+}
+
+/// <summary>
+/// Eén van de drie AREI-boeken. Het bestand staat standaard statisch in
+/// /downloaden/arei en kan via /admin/arei worden vervangen door een upload.
+/// </summary>
+public class AreiBoek
+{
+    public int Id { get; set; }
+    public string Naam { get; set; } = "";
+    public string Slug { get; set; } = "";
+    public string? Beschrijving { get; set; }
+    public string? BestandPad { get; set; }
+    public int Volgorde { get; set; }
+}
+
 public class ContactBericht
 {
     public int Id { get; set; }
