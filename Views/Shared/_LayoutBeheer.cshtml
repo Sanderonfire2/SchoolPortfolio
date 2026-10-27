@@ -1,0 +1,79 @@
+@{
+    var titel = ViewData["Titel"] as string;
+    var pad = (Context.Request.Path.Value ?? "/").ToLowerInvariant().TrimEnd('/');
+    string Actief(string doel) => pad.StartsWith(doel) ? "is-actief" : "";
+}
+<!DOCTYPE html>
+<html lang="nl" data-thema="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(titel ?? "Beheer") · Schoolportfolio</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <script>
+        (function () {
+            var opgeslagen = null;
+            try { opgeslagen = localStorage.getItem("thema"); } catch (e) { }
+            document.documentElement.dataset.thema = opgeslagen === "light" || opgeslagen === "dark" ? opgeslagen : "dark";
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="sla-link" href="#inhoud">Naar de inhoud</a>
+    <header class="balk">
+        <div class="container balk-binnen">
+            <a class="logo" href="/admin">
+                <span class="logo-teken">S</span>
+                <span>Beheer</span>
+            </a>
+            <ul class="menu">
+                <li><a href="/">Naar de site</a></li>
+            </ul>
+            <div class="balk-hulpmiddelen">
+                <button class="iconknop" type="button" data-themaknop
+                        aria-label="Wissel tussen donker en licht thema" title="Thema wisselen">
+                    <svg class="zon-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4.4" />
+                        <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" />
+                    </svg>
+                    <svg class="maan-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="beheer-layout">
+        <nav class="beheer-schakel" aria-label="Beheernavigatie">
+            <ul>
+                <li><a class="@Actief("/admin")" href="/admin">Overzicht</a></li>
+                <li><a class="@Actief("/admin/projecten")" href="/admin/projecten">Projecten</a></li>
+                <li><a class="@Actief("/admin/opleidingen")" href="/admin/opleidingen">Opleidingen</a></li>
+                <li><a class="@Actief("/admin/stages")" href="/admin/stages">Stage</a></li>
+                <li><a class="@Actief("/admin/pov")" href="/admin/pov">POV</a></li>
+                <li><a class="@Actief("/admin/werkervaringen")" href="/admin/werkervaringen">Werkervaring</a></li>
+                <li><a class="@Actief("/admin/inhoud")" href="/admin/inhoud">Inleidingsteksten</a></li>
+                <li><a class="@Actief("/admin/berichten")" href="/admin/berichten">Berichten</a></li>
+                <li><a class="@Actief("/admin/profiel")" href="/admin/profiel">Profiel</a></li>
+            </ul>
+        </nav>
+        <div class="beheer-inhoud" id="inhoud">
+            @RenderBody()
+            <div class="voetschrift-basisregel" style="margin-top:2.5rem;">
+                <span>Beheeromgeving · Schoolportfolio</span>
+                <form method="post" action="/admin/uitloggen" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <button class="knop knop--klein knop--stil" type="submit">Uitloggen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+@using SchoolPortfolio.Models
+@model List<PaginaInhoud>
+@inject Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper Hulp
+@{
+    Layout = "_LayoutBeheer";
+    var opties = new List<(string Sleutel, string Naam)>
+    {
+        ("intro-projecten", "Inleiding bij Projecten"),
+        ("intro-schoolcarriere", "Inleiding bij Schoolcarrière"),
+        ("intro-stage", "Inleiding bij Stage"),
+        ("intro-werkervaring", "Inleiding bij Werkervaring"),
+        ("intro-overmij", "Inleiding bij Over mij"),
+        ("intro-contact", "Inleiding bij Contact")
+    };
+    string Waarde(string sleutel) =>
+        Model.FirstOrDefault(k => k.Sleutel == sleutel)?.Inhoud ?? "";
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Teksten</span>
+        <h1>Inleidingsteksten</h1>
+    </div>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+
+<p class="tekst-sub tekst-sm" style="max-width:42rem;">
+    Korte inleidingsteksten die bovenaan elke pagina verschijnen. Laat een veld leeg om de inleiding weg te verbergen.
+</p>
+
+@foreach (var optie in opties)
+{
+    <form method="post" asp-controller="Admin" asp-action="InhoudOpslaan" class="beheer-formulier" style="margin-top:1.6rem; padding-top:1.4rem;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="sleutel" value="@optie.Sleutel" />
+        <div class="veld" style="margin-bottom:0.8rem;">
+            <span class="veldnaam">@optie.Naam</span>
+            <textarea class="invoer" name="inhoud" rows="2" style="min-height:0;">@Waarde(optie.Sleutel)</textarea>
+        </div>
+        <button class="knop knop--klein" type="submit">Deze tekst opslaan</button>
+    </form>
+}

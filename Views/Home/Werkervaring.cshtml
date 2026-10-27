@@ -1,0 +1,37 @@
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = "Werkervaring";
+    var werkervaringen = Db.Werkervaringen.OrderBy(w => w.Volgorde).ToList();
+    var introductie = Db.PaginaInhouden.Find("intro-werkervaring")?.Inhoud;
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">Ervaring</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">Werkervaring</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        @foreach (var werk in werkervaringen)
+        {
+            <article class="werkrij">
+                <div class="tijdlijn-periode">@werk.Periode</div>
+                <div>
+                    <header>
+                        <h3>@werk.Bedrijf</h3>
+                        <span class="instelling tekst-sub tekst-sm">@werk.Functie@(!string.IsNullOrWhiteSpace(werk.Locatie) ? " · " + werk.Locatie : "")</span>
+                    </header>
+                    <p>@werk.Omschrijving</p>
+                </div>
+            </article>
+        }
+    </div>
+</section>

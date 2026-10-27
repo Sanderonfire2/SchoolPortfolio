@@ -1,0 +1,54 @@
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = "Over mij";
+    var profiel = Db.Profielen.FirstOrDefault();
+    var opleiding = Db.Opleidingen.OrderBy(o => o.Volgorde).FirstOrDefault();
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">Kennismaking</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">Over mij</h1>
+        <p class="hero-intro">@Db.PaginaInhouden.Find("intro-overmij")?.Inhoud</p>
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container overgrid">
+        <div class="overfoto">
+            @if (!string.IsNullOrWhiteSpace(profiel?.ProfielfotoPad))
+            {
+                <img src="@profiel.ProfielfotoPad" alt="Profielfoto van @(profiel?.VolledigeNaam)" />
+            }
+        </div>
+        <div>
+            <dl class="feitelijst" style="margin-bottom:2.6rem; max-width:36rem;">
+                <div><dt>Volledige naam</dt><dd>@(profiel?.VolledigeNaam)</dd></div>
+                <div><dt>Opleiding</dt><dd>@(opleiding?.Titel)</dd></div>
+                <div><dt>Woonplaats</dt><dd>@(profiel?.Woonplaats ?? "—")</dd></div>
+                @if (!string.IsNullOrWhiteSpace(profiel?.Email))
+                {
+                    <div><dt>E-mail</dt><dd><a href="mailto:@profiel.Email">@profiel.Email</a></dd></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(profiel?.LinkedInUrl))
+                {
+                    <div><dt>LinkedIn</dt><dd><a href="@profiel.LinkedInUrl" rel="noopener" target="_blank">Profiel openen ↗</a></dd></div>
+                }
+            </dl>
+            <div class="overtekst">
+                @if (profiel is not null)
+                {
+                    foreach (var alinea in profiel.OverMijTekst.Split("\n\n"))
+                    {
+                        <p>@alinea</p>
+                    }
+                }
+            </div>
+            <p style="margin-top:2rem;">
+                <a class="knop knop--primair" href="/contact">Neem contact op <span aria-hidden="true">→</span></a>
+            </p>
+        </div>
+    </div>
+</section>

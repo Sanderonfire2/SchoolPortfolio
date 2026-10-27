@@ -1,0 +1,210 @@
+@using SchoolPortfolio.Models
+@using SchoolPortfolio.Services
+@model PovLocatie
+@inject UploadService uploads
+@{
+    Layout = "_LayoutBeheer";
+    var lijst = ViewBag.Lijst as List<PovLocatie> ?? new();
+    var isNieuw = Model.Id == 0;
+}
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inhoud</span>
+        <h1>POV-locaties</h1>
+    </div>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+@if (TempData["Foutmelding"] is string foutmelding)
+{
+    <div class="kenbaar" style="border-color:var(--gevaar);" role="alert">@foutmelding</div>
+}
+
+<table class="beheer-tabel">
+    <thead>
+        <tr><th>Schooljaar</th><th>Naam</th><th>Bedrijf</th><th>Periode</th><th>Rapporten</th><th>Status</th><th style="text-align:right;">Acties</th></tr>
+    </thead>
+    <tbody>
+        @if (lijst.Count == 0)
+        {
+            <tr><td colspan="7" class="tekst-zacht">Nog geen POV-locaties toegevoegd.</td></tr>
+        }
+        @foreach (var item in lijst)
+        {
+            <tr>
+                <td>@(string.IsNullOrWhiteSpace(item.Schooljaar) ? "—" : item.Schooljaar)</td>
+                <td class="cel-sterk">@item.Naam</td>
+                <td>@item.Bedrijf</td>
+                <td>@item.Periode</td>
+                <td>@item.Rapporten.Count</td>
+                <td>
+                    @if (item.IsGepubliceerd)
+                    {
+                        <span class="stempel stempel--accent">Publiek</span>
+                    }
+                    else
+                    {
+                        <span class="stempel">Privé</span>
+                    }
+                </td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/admin/pov/@item.Id/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/pov/@item.Id/verwijderen"
+                              onsubmit="return confirm('Verwijder locatie met alle dagrapporten?');">
+                            @Html.AntiForgeryToken()
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="beheer-formulier">
+    <h3>@(isNieuw ? "Nieuwe POV-locatie" : "POV-locatie bewerken")</h3>
+    <form method="post" action="/admin/pov/opslaan">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="@Model.Id" />
+        <div class="beheer-kolommen">
+            <div class="veld">
+                <label for="PovNaam">Naam</label>
+                <input class="invoer" id="PovNaam" name="Naam" value="@Model.Naam" placeholder="Bijv. Oefenpaneel VIVES" />
+                <span class="veldfout" asp-validation-for="Naam"></span>
+            </div>
+            <div class="veld">
+                <label for="PovBedrijf">Bedrijf of organisatie</label>
+                <input class="invoer" id="PovBedrijf" name="Bedrijf" value="@Model.Bedrijf" />
+            </div>
+            <div class="veld">
+                <label for="PovAdres">Adres</label>
+                <input class="invoer" id="PovAdres" name="Adres" value="@Model.Adres" />
+            </div>
+            <div class="veld">
+                <label for="PovSchooljaar">Schooljaar</label>
+                <select class="invoer" id="PovSchooljaar" name="Schooljaar">
+                    @foreach (var jaar in new[] { "5de jaar", "6de jaar" })
+                    {
+                        if (Model.Schooljaar == jaar)
+                        {
+                            <option value="@jaar" selected="selected">@jaar</option>
+                        }
+                        else
+                        {
+                            <option value="@jaar">@jaar</option>
+                        }
+                    }
+                </select>
+                <span class="formuliernota">Bepaalt de dropdown onder “POV” in het menu.</span>
+            </div>
+            <div class="veld">
+                <label for="PovPeriode">Periode</label>
+                <input class="invoer" id="PovPeriode" name="Periode" value="@Model.Periode" placeholder="Bijv. 2026 · februari" />
+            </div>
+            <div class="veld">
+                <label for="PovVolgorde">Volgorde</label>
+                <input class="invoer" id="PovVolgorde" name="Volgorde" type="number" min="1" value="@Model.Volgorde" />
+            </div>
+        </div>
+        <div class="veld">
+            <label for="PovOmschrijving">Omschrijving <span style="text-transform:none;font-weight:400;">(witregel tussen alinea's)</span></label>
+            <textarea class="invoer" id="PovOmschrijving" name="Omschrijving" rows="4">@Model.Omschrijving</textarea>
+        </div>
+        <div class="veld">
+            <label>Status</label>
+            <div class="keuze" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.4rem;">
+                <label>
+                    <input type="radio" name="IsGepubliceerd" value="true" @(Model.IsGepubliceerd ? "checked" : null) />
+                    <span>Gepubliceerd</span>
+                </label>
+                <label>
+                    <input type="radio" name="IsGepubliceerd" value="false" @(Model.IsGepubliceerd ? null : "checked") />
+                    <span>Privé</span>
+                </label>
+            </div>
+        </div>
+        <button class="knop knop--primair" type="submit">Opslaan</button>
+    </form>
+</div>
+
+@if (!isNieuw)
+{
+    <div class="beheer-formulier">
+        <h3>Dagrapporten (PDF) voor deze locatie</h3>
+        <p class="tekst-sub tekst-sm">Elke locatie kan onbeperkt dagrapporten hebben, elk met eigen datum en optionele titel. Beheer elk rapport onafhankelijk van de rest.</p>
+
+        @if (Model.Rapporten.Count == 0)
+        {
+            <p class="tekst-sub tekst-sm" style="font-style:italic;">Nog geen dagrapporten — voeg hieronder de eerste toe.</p>
+        }
+        else
+        {
+            <div class="rapporten-beheer">
+                @foreach (var rapport in Model.Rapporten.OrderBy(r => r.Datum))
+                {
+                    <div class="rapport-beheerkaart">
+                        <div class="rapport-beheerkaart-inhoud">
+                            <a class="rapport-voorvertoning" href="@rapport.Pad" target="_blank" rel="noopener" title="Open volledige PDF in een nieuw tabblad">
+                                @if (uploads.VoorvertoningVan(rapport.Pad) is string voor)
+                                {
+                                    <img src="@voor" alt="Voorvertoning van @(rapport.Titel ?? rapport.Pad)" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <span class="rapport-voorvertoning-leeg" aria-hidden="true">PDF</span>
+                                }
+                            </a>                                    <form method="post" action="/admin/pov/@Model.Id/rapporten" enctype="multipart/form-data">@Html.AntiForgeryToken()
+                                                    <input type="hidden" name="terugUrl" value="/admin/pov/@Model.Id/bewerken" />
+                                                    <div class="veld" style="margin-bottom:0.5rem;">
+                                                        <label class="veldnaam">Titel</label>
+                                                        <input class="invoer" name="rapportTitel" value="@rapport.Titel" style="padding-block:0.3rem;" />
+                                                    </div>
+                                                    <div class="veld" style="margin-bottom:0.5rem;">
+                                                        <label class="veldnaam">Datum</label>
+                                                        <input class="invoer" type="date" name="rapportDatum" value="@rapport.Datum.ToString("yyyy-MM-dd")" style="padding-block:0.3rem;" />
+                                                    </div>
+                                                    <label style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.8rem;">
+                                                        <input type="checkbox" name="isGepubliceerd" value="true" @(rapport.IsGepubliceerd ? "checked" : null) style="width:auto;" />
+                                                        <span>Gepubliceerd</span>
+                                                    </label>        <button class="knop knop--klein" type="submit">Wijzigingen opslaan</button>
+                                    </form>
+                                    <form method="post" action="/admin/pov/@Model.Id/rapporten" enctype="multipart/form-data">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="terugUrl" value="/admin/pov/@Model.Id/bewerken" />
+                                                        <label class="veldnaam" style="margin-top:0.8rem;">Vervang PDF</label>
+                                                        <input type="file" name="vervangBestand" accept="application/pdf" class="invoer" style="font-size:var(--text-sm);" />
+                                                        <button class="knop knop--klein" type="submit" style="margin-top:0.5rem;">Vervangen</button>
+                                                    </form>
+                                                    <form method="post" action="/admin/rapporten/@rapport.Id/verwijderen">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="terugUrl" value="/admin/pov/@Model.Id/bewerken" />
+                                                        <button class="knop knop--klein knop--gevaar" type="submit" style="margin-top:0.8rem;">Verwijderen</button>
+                                                    </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        }                                                <form method="post" action="/admin/pov/@Model.Id/rapporten" enctype="multipart/form-data" style="margin-top:1.5rem;border-top:1px solid var(--lijn);padding-top:1.5rem;">
+            @Html.AntiForgeryToken()
+            <div class="veld">
+                <label class="veldnaam">Nieuwe dagrapporten uploaden (PDF, meerdere tegelijk)</label>
+                <input type="file" name="rapportBestanden" accept="application/pdf" multiple class="invoer" />
+                <span class="formuliernota">PDF · maximaal 16 MB per bestand · maximaal 80 MB totaal per opslaan.</span>
+            </div>
+            <div class="veld">
+                <label class="veldnaam">Titel per rapport (optioneel, één per regel, corresponderend met de gekozen bestanden)</label>
+                <textarea class="invoer" name="rapportTitels" rows="3" style="min-height:4rem;" placeholder="Dag 1 — nulmeting gedaan&#10;Dag 2 — kring afgewerkt"></textarea>
+            </div>
+            <div class="veld">
+                <label class="veldnaam">Datum per rapport (één per regel, corresponderend met de gekozen bestanden)</label>
+                <textarea class="invoer" name="rapportDatums" rows="3" style="min-height:4rem;" placeholder="2026-02-10&#10;2026-02-11"></textarea>
+                <span class="formuliernota">Formaat: jjjj-mm-dd. Ontbrekende regels krijgen vandaag als datum (daarna vrij aanpasbaar).</span>
+            </div>
+            <button class="knop knop--primair" type="submit">Dagrapporten toevoegen</button>
+        </form>
+    </div>
+}

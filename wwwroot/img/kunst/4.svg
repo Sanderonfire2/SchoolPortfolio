@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#191a1e"/>
+  <rect x="100" y="100" width="480" height="400" fill="none" stroke="#2c2d33"/>
+  <line x1="100" y1="233" x2="580" y2="233" stroke="#24252b"/>
+  <line x1="100" y1="366" x2="580" y2="366" stroke="#24252b"/>
+  <line x1="260" y1="100" x2="260" y2="500" stroke="#24252b"/>
+  <line x1="420" y1="100" x2="420" y2="500" stroke="#24252b"/>
+  <rect x="100" y="100" width="160" height="133" fill="#bd9259" opacity="0.16"/>
+  <rect x="420" y="366" width="160" height="134" fill="#1e1f24"/>
+  <path d="M 640 100 V 500 M 780 100 V 500 M 640 100 H 780" fill="none" stroke="#33343a"/>
+  <circle cx="710" cy="300" r="4" fill="#bd9259"/>
+  <text x="100" y="70" font-family="Georgia, serif" font-size="18" fill="#55565c">Perceel · Seizoen · Gewas</text>
+</svg>

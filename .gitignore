@@ -1,0 +1,22 @@
+# .NET build-output
+bin/
+obj/
+*.user
+*.suo
+
+# App data (wordt bij start automatisch gevuld door DataInitializer)
+app.db
+app.db.backup-*
+*.db.bak
+nohup.out
+server*.log
+server*.pid
+*_log.txt
+
+# Tijdelijke schrapings-/debugbestanden
+tok*.txt
+token.txt
+token*.json
+cookies*.txt
+*.tmp
+.orig-snapshot/

@@ -1,0 +1,207 @@
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@inject SiteDbContext Db
+@{
+    var profiel = Db.Profielen.FirstOrDefault();
+    // Dropdown-data: jaren + vakken uit de projecten, in vaste volgorde.
+    var projectJaren = Db.Projecten.Where(p => p.IsGepubliceerd).Select(p => p.Schooljaar).Distinct().ToList();
+    string[] jaarVolgorde = { "", "3de jaar", "4de jaar", "5de jaar", "6de jaar" };
+    var jaren = projectJaren.Where(j => j != null).Distinct().OrderBy(j => Array.IndexOf(jaarVolgorde, j) == -1 ? 99 : Array.IndexOf(jaarVolgorde, j)).ToList();
+    Func<string, List<string>> vakkenVan = jaar => Db.Projecten
+        .Where(p => p.IsGepubliceerd && p.Schooljaar == jaar && p.Vak != null)
+        .Select(p => p.Vak!).Distinct().OrderBy(v => v).ToList();
+    string JaarSlug(string? j) => (j ?? "").ToLowerInvariant().Replace(" ", "-");
+    string VakSlug(string v) => v.ToLowerInvariant().Replace(" ", "-").Replace("ë", "e").Replace("é", "e");
+    var pad = (Context.Request.Path.Value ?? "/").ToLowerInvariant().TrimEnd('/');
+    if (string.IsNullOrEmpty(pad)) pad = "/";
+    string Actief(string doel)
+    {
+        if (doel == "/" && pad == "/") return "is-actief";
+        if (doel != "/" && pad.StartsWith(doel)) return "is-actief";
+        return "";
+    }
+    var titeld = ViewData["Titel"] as string;
+    var volledigeTitel = string.IsNullOrEmpty(titeld) ? profiel?.VolledigeNaam : $"{titeld} · {profiel?.VolledigeNaam}";
+}
+<!DOCTYPE html>
+<html lang="nl" data-thema="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@volledigeTitel</title>
+    <meta name="description" content="@(profiel?.KorteIntroductie ?? "Portfolio — elektrotechniek")" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <script>
+        (function () {
+            var opgeslagen = null;
+            try { opgeslagen = localStorage.getItem("thema"); } catch (e) { }
+            document.documentElement.dataset.thema = opgeslagen === "light" || opgeslagen === "dark" ? opgeslagen : "dark";
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="sla-link" href="#inhoud">Naar de inhoud</a>
+    <header class="balk" data-balk>
+        <div class="container balk-binnen">
+            <a class="logo" href="/">
+                <span class="logo-teken" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg>
+                </span>
+                <span>@(profiel?.VolledigeNaam ?? "Sander Van Praet")</span>
+            </a>
+            <nav aria-label="Hoofdnavigatie">
+                <ul class="menu">
+                    <li><a class="@Actief("/")" href="/">Home</a></li>
+                    <li><a class="@Actief("/schoolcarriere")" href="/schoolcarriere">Schoolcarrière</a></li>
+                    <li class="menu-dropdown">
+                        <a class="@Actief("/projecten")" href="/projecten" aria-haspopup="true">Projecten ▾</a>
+                        <ul class="menu-sub">
+                            @foreach (var jaar in jaren)
+                            {
+                                var vakken = vakkenVan(jaar);
+                                if (vakken.Count == 0)
+                                {
+                                    <li><a href="/projecten/@JaarSlug(jaar)">@jaar</a></li>
+                                }
+                                else
+                                {
+                                    <li class="menu-dropdown">
+                                        <a href="/projecten/@JaarSlug(jaar)" aria-haspopup="true">@jaar ▸</a>
+                                        <ul class="menu-sub menu-subsub">
+                                            <li><a href="/projecten/@JaarSlug(jaar)">Alle projecten</a></li>
+                                            @foreach (var vak in vakken)
+                                            {
+                                                <li><a href="/projecten/@JaarSlug(jaar)/@VakSlug(vak)">@vak</a></li>
+                                            }
+                                        </ul>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    </li>
+                    <li class="menu-dropdown">
+                        <a class="@Actief("/stage")" href="/stage" aria-haspopup="true">Stage ▾</a>
+                        <ul class="menu-sub">
+                            <li><a href="/stage">Alle stages</a></li>
+                            <li><a href="/stage/5de-jaar">5de jaar</a></li>
+                            <li><a href="/stage/6de-jaar">6de jaar</a></li>
+                        </ul>
+                    </li>
+                    <li class="menu-dropdown">
+                        <a class="@Actief("/pov")" href="/pov" aria-haspopup="true">POV ▾</a>
+                        <ul class="menu-sub">
+                            <li><a href="/pov">Alle POV's</a></li>
+                            <li><a href="/pov/5de-jaar">5de jaar</a></li>
+                            <li><a href="/pov/6de-jaar">6de jaar</a></li>
+                        </ul>
+                    </li>
+                    <li><a class="@Actief("/werkervaring")" href="/werkervaring">Werkervaring</a></li>
+                    <li><a class="@Actief("/over-mij")" href="/over-mij">Over mij</a></li>
+                    <li><a class="@Actief("/contact")" href="/contact">Contact</a></li>
+                </ul>
+            </nav>
+            <div class="balk-hulpmiddelen">
+                <button class="iconknop" type="button" data-themaknop
+                        aria-label="Wissel tussen donker en licht thema" title="Thema wisselen">
+                    <svg class="zon-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4.4" />
+                        <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" />
+                    </svg>
+                    <svg class="maan-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />
+                    </svg>
+                </button>
+                <button class="iconknop menuknop" type="button" data-menuknop
+                        aria-label="Menu openen" aria-expanded="false" aria-controls="mobiel-menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="container mobiel-panel" id="mobiel-menu" aria-label="Mobiele navigatie">
+            <ul>
+                <li><a class="@Actief("/")" href="/">Home</a></li>
+                <li><a class="@Actief("/schoolcarriere")" href="/schoolcarriere">Schoolcarrière</a></li>
+                <li><a class="@Actief("/projecten")" href="/projecten">Projecten</a></li>
+                @foreach (var jaar in jaren)
+                {
+                    <li class="mobiel-sub">
+                        <a href="/projecten/@JaarSlug(jaar)">↳ @jaar</a>
+                    </li>
+                    foreach (var vak in vakkenVan(jaar))
+                    {
+                        <li class="mobiel-sub2"><a href="/projecten/@JaarSlug(jaar)/@VakSlug(vak)">↳ @vak</a></li>
+                    }
+                }
+                <li><a class="@Actief("/stage")" href="/stage">Stage</a></li>
+                <li><a class="@Actief("/pov")" href="/pov">POV</a></li>
+                <li><a class="@Actief("/werkervaring")" href="/werkervaring">Werkervaring</a></li>
+                <li><a class="@Actief("/over-mij")" href="/over-mij">Over mij</a></li>
+                <li><a class="@Actief("/contact")" href="/contact">Contact</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <main id="inhoud">
+        @RenderBody()
+    </main>
+
+    <footer class="voetschrift">
+        <div class="container">
+            <div class="voetschrift-grid">
+                <div class="voetschrift-intro">
+                    <a class="logo voetschrift-logo" href="/" aria-label="Naar de startpagina">
+                        <span class="logo-teken" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg>
+                        </span>
+                        <span>@(profiel?.VolledigeNaam ?? "Sander Van Praet")</span>
+                    </a>
+                    <p class="voetschrift-basis">@(profiel?.Tagline ?? "Portfolio — elektrische installaties")</p>
+                </div>
+                <div class="voetschrift-kolom">
+                    <h3>Contact</h3>
+                    <ul>
+                        @if (!string.IsNullOrWhiteSpace(profiel?.Email))
+                        {
+                            <li><a href="mailto:@profiel.Email">@profiel.Email</a></li>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(profiel?.Telefoon))
+                        {
+                            <li><a href="tel:@profiel.Telefoon.Replace(" ", "")">@profiel.Telefoon</a></li>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(profiel?.LinkedInUrl))
+                        {
+                            <li><a href="@profiel.LinkedInUrl" rel="noopener" target="_blank">LinkedIn ↗</a></li>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(profiel?.Woonplaats))
+                        {
+                            <li><span>@profiel.Woonplaats</span></li>
+                        }
+                        <li><a href="/contact">Contactformulier</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="voetschrift-basisregel">
+                <span>© @DateTime.Now.Year @(profiel?.VolledigeNaam ?? "Sander Van Praet") — Alle rechten voorbehouden</span>
+                <a href="/admin/inloggen" rel="nofollow">Beheer</a>
+            </div>
+        </div>
+    </footer>
+
+    <dialog class="vergrootglas" data-vergrootglas aria-label="Afbeelding vergroten">
+        <img data-vergrootglas-img src="" alt="" />
+        <div class="vergrootglas-info">
+            <span data-vergrootglas-tekst></span>
+            <button class="knop knop--klein" type="button" data-vergrootglas-sluit>Sluiten</button>
+        </div>
+    </dialog>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

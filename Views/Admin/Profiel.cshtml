@@ -1,0 +1,76 @@
+@using SchoolPortfolio.Models
+@model Profiel
+@{
+    Layout = "_LayoutBeheer";
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Instellingen</span>
+        <h1>Profiel</h1>
+    </div>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+
+<form method="post" enctype="multipart/form-data" asp-controller="Admin" asp-action="Profiel" style="max-width:40rem;">
+    @Html.AntiForgeryToken()
+    <div class="veld">
+        <label asp-for="VolledigeNaam">Volledige naam</label>
+        <input class="invoer" asp-for="VolledigeNaam" />
+        <span class="veldfout" asp-validation-for="VolledigeNaam"></span>
+    </div>
+    <div class="veld">
+        <label asp-for="Tagline">Slogan / ondertitel</label>
+        <input class="invoer" asp-for="Tagline" />
+    </div>
+    <div class="veld">
+        <label asp-for="KorteIntroductie">Korte introductie (startpagina)</label>
+        <textarea class="invoer" asp-for="KorteIntroductie" rows="3"></textarea>
+        <span class="veldfout" asp-validation-for="KorteIntroductie"></span>
+    </div>
+    <div class="veld">
+        <label asp-for="OverMijTekst">Verhaal “Over mij”</label>
+        <textarea class="invoer" asp-for="OverMijTekst" rows="8"></textarea>
+        <span class="formuliernota">Alinea's scheiden door een witregel.</span>
+    </div>
+
+    <div class="veld">
+        <label class="veldnaam">Profielfoto</label>
+        @if (!string.IsNullOrWhiteSpace(Model.ProfielfotoPad))
+        {
+            <div class="uploadvoorbeeld" id="profielfotoVoorbeeld">
+                <img src="@Model.ProfielfotoPad" alt="Huidige profielfoto" style="max-width:9rem;" />
+                <span class="tekst-sm tekst-sub">Huidige profielfoto — kies een nieuw bestand om te vervangen.</span>
+            </div>
+        }
+        <input type="file" name="profielfotoBestand" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" class="invoer upload-invoer" data-voorbeeld="profielfotoVoorbeeld" />
+        <span class="formuliernota">JPG, PNG, WebP of SVG · maximaal 8 MB.</span>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label asp-for="Email">E-mailadres</label>
+            <input class="invoer" asp-for="Email" type="email" />
+        </div>
+        <div class="veld">
+            <label asp-for="Telefoon">Telefoon</label>
+            <input class="invoer" asp-for="Telefoon" />
+        </div>
+    </div>
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label asp-for="Woonplaats">Woonplaats</label>
+            <input class="invoer" asp-for="Woonplaats" />
+        </div>
+        <div class="veld">
+            <label asp-for="LinkedInUrl">LinkedIn-websiteadres</label>
+            <input class="invoer" asp-for="LinkedInUrl" placeholder="https://www.linkedin.com/in/…" />
+        </div>
+    </div>
+
+    <button class="knop knop--primair" type="submit">Opslaan</button>
+</form>

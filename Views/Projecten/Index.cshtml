@@ -1,0 +1,122 @@
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@model List<Project>
+@inject SiteDbContext Db
+@{
+    var filterJaar = ViewBag.FilterJaar as string;
+    var filterVak = ViewBag.FilterVak as string;
+    var titel = filterVak is not null ? $"{filterJaar} · {filterVak}"
+              : filterJaar is not null ? filterJaar
+              : "Projecten";
+    ViewData["Titel"] = titel;
+    var introductie = Db.PaginaInhouden.Find("intro-projecten")?.Inhoud;
+
+    string JaarSlug(string? j) => (j ?? "").ToLowerInvariant().Replace(" ", "-");
+    string VakSlug(string v) => v.ToLowerInvariant().Replace(" ", "-").Replace("ë", "e").Replace("é", "e");
+
+    // Groepeer de zichtbare projecten per Schooljaar/Vak zodra er niet gefilterd is.
+    var gegroepeerd = string.IsNullOrWhiteSpace(filterJaar)
+        ? Model.Where(p => !string.IsNullOrWhiteSpace(p.Schooljaar))
+            .GroupBy(p => new { p.Schooljaar, p.Vak })
+            .OrderBy(g => g.Key.Schooljaar)
+            .ThenBy(g => g.Key.Vak)
+            .ToList()
+        : null;
+}
+
+<section class="pagina">
+    <div class="container">
+        <nav class="broodkruimel" aria-label="Kruimelpad">
+            @if (filterVak is not null)
+            {
+                <a href="/projecten">Projecten</a>
+                <span class="scheid" aria-hidden="true">/</span>
+                <a href="/projecten/@JaarSlug(filterJaar)">@filterJaar</a>
+                <span class="scheid" aria-hidden="true">/</span>
+                <span>@filterVak</span>
+            }
+            else if (filterJaar is not null)
+            {
+                <a href="/projecten">Projecten</a>
+                <span class="scheid" aria-hidden="true">/</span>
+                <span>@filterJaar</span>
+            }
+            else
+            {
+                <span class="over-label">Werk</span>
+            }
+        </nav>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">@titel</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie) && filterJaar is null)
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+    </div>
+</section>
+
+@if (gegroepeerd is not null && gegroepeerd.Count > 0)
+{
+    // Overzichtspagina: per schooljaar/vak een kop met alle projecten eronder.
+    foreach (var groep in gegroepeerd)
+    {
+        <section class="pagina" style="padding-top:0;">
+            <div class="container">
+                <div class="sectie-kop" style="margin-bottom:1rem;">
+                    <h2 style="font-size:1.35rem;">
+                        <a href="/projecten/@JaarSlug(groep.Key.Schooljaar)/@VakSlug(groep.Key.Vak ?? "")"
+                           style="color:inherit;text-decoration:none;">
+                            @groep.Key.Schooljaar@(string.IsNullOrWhiteSpace(groep.Key.Vak) ? "" : $" · {groep.Key.Vak}")
+                        </a>
+                    </h2>
+                    <span class="over-label">@groep.Count() project@(groep.Count() == 1 ? "" : "en")</span>
+                </div>
+                <div class="projectraster">
+                    @foreach (var project in groep.OrderBy(p => p.Volgorde).ThenBy(p => p.Titel))
+                    {
+                        <partial name="Projectkaart" model="project" />
+                    }
+                </div>
+            </div>
+        </section>
+    }
+}
+else
+{
+    <section class="pagina" style="padding-top:0;">
+        <div class="container">
+            @if (filterJaar is not null && !string.IsNullOrWhiteSpace(filterVak))
+            {
+                // Binnen een vak-filter: linkjes terug naar de overige vakken van dit jaar.
+                var vakken = Db.Projecten
+                    .Where(p => p.IsGepubliceerd && p.Schooljaar == filterJaar && p.Vak != null)
+                    .Select(p => p.Vak!).Distinct().OrderBy(v => v).ToList();
+                if (vakken.Count > 1)
+                {
+                    <p class="projectraster-filter" style="margin-bottom:1.4rem;">
+                        @foreach (var vak in vakken)
+                        {
+                            if (vak == filterVak)
+                            {
+                                <strong>@vak</strong>
+                            }
+                            else
+                            {
+                                <a href="/projecten/@JaarSlug(filterJaar)/@VakSlug(vak)">@vak</a>
+                            }
+                            @if (vak != vakken.Last())
+                            {
+                                <span aria-hidden="true"> · </span>
+                            }
+                        }
+                    </p>
+                }
+            }
+            <div class="projectraster">
+                @foreach (var project in Model)
+                {
+                    <partial name="Projectkaart" model="project" />
+                }
+            </div>
+        </div>
+    </section>
+}

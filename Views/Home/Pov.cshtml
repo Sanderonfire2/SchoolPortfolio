@@ -1,0 +1,134 @@
+@using Microsoft.EntityFrameworkCore
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@using SchoolPortfolio.Services
+@inject SiteDbContext Db
+@inject UploadService uploads
+@{
+    ViewData["Titel"] = "POV";
+    var filterJaar = ViewBag.FilterJaar as string;
+    var locatiesQ = Db.PovLocaties
+        .Include(p => p.Rapporten)
+        .OrderBy(p => p.Volgorde)
+        .Where(p => p.IsGepubliceerd);
+    if (!string.IsNullOrWhiteSpace(filterJaar)) locatiesQ = locatiesQ.Where(p => p.Schooljaar == filterJaar);
+    var locaties = locatiesQ.ToList();
+    var introductie = Db.PaginaInhouden.Find("intro-pov")?.Inhoud;
+}
+
+<section class="pagina">
+    <div class="container">
+        <nav class="broodkruimel" aria-label="Kruimelpad">
+            @if (!string.IsNullOrWhiteSpace(filterJaar))
+            {
+                <a href="/pov">POV</a>
+                <span class="scheid" aria-hidden="true">/</span>
+                <span>@filterJaar</span>
+            }
+            else
+            {
+                <span class="over-label">POV</span>
+            }
+        </nav>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">@(string.IsNullOrWhiteSpace(filterJaar) ? "POV" : $"POV · {filterJaar}")</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+        else
+        {
+            <p class="hero-intro">Praktijkgericht vak Ondernemingen: opdrachten en stage-activiteiten op verschillende werkplekken, elk vastgelegd in dagrapporten.</p>
+        }
+    </div>
+</section>
+
+@if (locaties.Count == 0)
+{
+    <section class="pagina" style="padding-top:0;">
+        <div class="container">
+            <p class="tekst-sub">De POV-locaties worden binnenkort aangevuld.</p>
+        </div>
+    </section>
+}
+else
+{
+    @if (locaties.Count == 0 && !string.IsNullOrWhiteSpace(filterJaar))
+    {
+        <section class="pagina" style="padding-top:0;">
+            <div class="container">
+                <p class="tekst-sub">Geen POV-locaties via @filterJaar.</p>
+            </div>
+        </section>
+    }
+    @foreach (var locatie in locaties)
+    {
+        <section class="pagina" style="padding-top:0;" id="@locatie.Slug">
+            <div class="container">
+                <div class="sectie-kop">
+                    <div>
+                        <span class="over-label">Locatie</span>
+                        <h2 style="font-size:clamp(1.6rem,3.4vw,2.3rem); margin-bottom:0.3rem;">@locatie.Naam</h2>
+                        <p class="tekst-sub">
+                            @if (!string.IsNullOrWhiteSpace(locatie.Bedrijf))
+                            {
+                                <span>@locatie.Bedrijf</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(locatie.Periode))
+                            {
+                                <span>@(string.IsNullOrWhiteSpace(locatie.Bedrijf) ? "" : " · ")@locatie.Periode</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(locatie.Adres))
+                            {
+                                <span>@(string.IsNullOrWhiteSpace(locatie.Periode) && string.IsNullOrWhiteSpace(locatie.Bedrijf) ? "" : " · ")@locatie.Adres</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(locatie.Omschrijving))
+                {
+                    <div class="detail-proza" style="margin-bottom:2rem;">
+                        @foreach (var alinea in locatie.Omschrijving.Split("\n\n"))
+                        {
+                            <p>@alinea</p>
+                        }
+                    </div>
+                }
+
+                <h3 style="margin-bottom:1rem;">Dagrapporten</h3>
+                @if (locatie.Rapporten.Any(r => r.IsGepubliceerd))
+                {
+                    <div class="rapporten-raster">
+                        @foreach (var rapport in locatie.Rapporten.Where(r => r.IsGepubliceerd).OrderByDescending(r => r.Datum))
+                        {
+                            <article class="rapport-kaart">
+                                <a class="rapport-kaart-premier" href="@rapport.Pad" target="_blank" rel="noopener">
+                                    @if (uploads.VoorvertoningVan(rapport.Pad) is string voor)
+                                    {
+                                        <img src="@voor" alt="Eerste pagina van @(rapport.Titel ?? "dagrapport")" loading="lazy" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rapport-kaart-leeg" aria-hidden="true">
+                                            <span class="document-glief">📄</span>
+                                            <span>@System.IO.Path.GetFileName(rapport.Pad)</span>
+                                        </div>
+                                    }
+                                </a>
+                                <div class="rapport-kaart-info">
+                                    <span class="rapport-kaart-datum">@rapport.Datum.ToString("d MMMM yyyy")</span>
+                                    <h4>@(rapport.Titel ?? $"Dagrapport {rapport.Datum.ToString("d-M-yyyy")}")</h4>
+                                    <a class="koppellink" href="@rapport.Pad" target="_blank" rel="noopener">PDF openen <span class="pijl" aria-hidden="true">↗</span></a>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="tekst-sub" style="font-style:italic;">Nog geen dagrapporten voor deze locatie.</p>
+                }
+            </div>
+        </section>
+    }
+}

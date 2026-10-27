@@ -1,0 +1,86 @@
+@using SchoolPortfolio.Models
+@model List<ContactBericht>
+@{
+    Layout = "_LayoutBeheer";
+    var ongelezen = Model.Count(b => !b.IsGelezen);
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inkomend</span>
+        <h1>Berichten</h1>
+    </div>
+    @if (Model.Count > 0)
+    {
+        <span class="stempel @(ongelezen > 0 ? "stempel--accent" : null)">@ongelezen nieuw van @Model.Count</span>
+    }
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+
+@if (Model.Count == 0)
+{
+    <p class="tekst-sub">Nog geen berichten ontvangen via het contactformulier.</p>
+}
+else
+{
+    <div class="berichten-lijst">
+        @foreach (var bericht in Model)
+        {
+            var samenvatting = !string.IsNullOrWhiteSpace(bericht.Onderwerp) ? bericht.Onderwerp : $"Bericht van {bericht.Naam}";
+            <details class="bericht-kaart @(bericht.IsGelezen ? "" : "bericht-kaart--nieuw")">
+                <summary>
+                    <span class="bericht-samenvatting">
+                        @if (!bericht.IsGelezen)
+                        {
+                            <span class="stempel stempel--accent">Nieuw</span>
+                        }
+                        <strong>@bericht.Naam</strong>
+                        <span class="tekst-zacht">· @bericht.VerstuurdOp.ToString("dd-MM-yyyy HH:mm")</span>
+                        <span class="bericht-onderwerp">— @samenvatting</span>
+                    </span>
+                    <span class="bericht-openen">Openen</span>
+                </summary>
+                <div class="bericht-inhoud">
+                    @if (!string.IsNullOrWhiteSpace(bericht.Onderwerp))
+                    {
+                        <div class="veld">
+                            <span class="veldnaam">Onderwerp</span>
+                            <p>@bericht.Onderwerp</p>
+                        </div>
+                    }
+                    <div class="veld">
+                        <span class="veldnaam">Bericht van @bericht.Naam (@bericht.Email)</span>
+                        <div class="bericht-tekst">
+                            @foreach (var alinea in (bericht.Inhoud ?? "").Split('\n'))
+                            {
+                                if (!string.IsNullOrWhiteSpace(alinea))
+                                {
+                                    <p>@alinea</p>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="beheer-acties" style="margin-top:0.8rem;">
+                        <a class="knop knop--klein" href="mailto:@bericht.Email">Beantwoorden ↗</a>
+                        @if (!bericht.IsGelezen)
+                        {
+                            <form method="post" action="/admin/berichten/@bericht.Id/gelezen">
+                                @Html.AntiForgeryToken()
+                                <button class="knop knop--klein" type="submit">Opslaan als gelezen</button>
+                            </form>
+                        }
+                        <form method="post" action="/admin/berichten/@bericht.Id/verwijderen"
+                              onsubmit="return confirm('Bericht van “@bericht.Naam” definitief verwijderen?');">
+                            @Html.AntiForgeryToken()
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </div>
+            </details>
+        }
+    </div>
+}

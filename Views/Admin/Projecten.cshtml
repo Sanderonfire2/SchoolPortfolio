@@ -1,0 +1,47 @@
+@using SchoolPortfolio.Models
+@model List<Project>
+@{
+    Layout = "_LayoutBeheer";
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inhoud</span>
+        <h1>Projecten</h1>
+    </div>
+    <a class="knop knop--primair" href="/admin/projecten/nieuw">Nieuw project</a>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+
+<table class="beheer-tabel">
+    <thead>
+        <tr><th>Titel</th><th>Schooljaar · vak</th><th>Periode</th><th>Categorie</th><th>Uitgelicht</th><th style="text-align:right;">Acties</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var project in Model)
+        {
+            <tr>
+                <td class="cel-sterk">@project.Titel</td>
+                <td>@(string.IsNullOrWhiteSpace(project.Schooljaar) ? "—" : (project.Schooljaar + (string.IsNullOrWhiteSpace(project.Vak) ? "" : " · " + project.Vak)))</td>
+                <td>@project.Categorie</td>
+                <td>@(project.IsUitgelicht ? "Ja" : "—")</td>
+                <td>@project.Volgorde</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/@project.Slug">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/@project.Id/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/@project.Id/verwijderen"
+                              onsubmit="return confirm('Project “@project.Titel” verwijderen?');">
+                            @Html.AntiForgeryToken()
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,100 @@
+@using SchoolPortfolio.Models
+@model Werkervaring
+@{
+    Layout = "_LayoutBeheer";
+    var lijst = ViewBag.Lijst as List<Werkervaring> ?? new();
+    var isNieuw = Model.Id == 0;
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inhoud</span>
+        <h1>Werkervaring</h1>
+    </div>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+
+<table class="beheer-tabel">
+    <thead>
+        <tr><th>Bedrijf</th><th>Periode</th><th>Functie</th><th style="text-align:right;">Acties</th></tr>
+    </thead>
+    <tbody>
+        @if (lijst.Count == 0)
+        {
+            <tr><td colspan="4" class="tekst-zacht">Nog geen werkervaring toegevoegd.</td></tr>
+        }
+        @foreach (var item in lijst)
+        {
+            <tr>
+                <td class="cel-sterk">@item.Bedrijf</td>
+                <td>@item.Periode</td>
+                <td>@item.Functie</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/admin/werkervaringen/@item.Id/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/werkervaringen/@item.Id/verwijderen"
+                              onsubmit="return confirm('“@item.Bedrijf” verwijderen?');">
+                            @Html.AntiForgeryToken()
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="beheer-formulier">
+    <h3>@(isNieuw ? "Nieuwe werkervaring" : "Werkervaring bewerken")</h3>
+    <form method="post" asp-controller="Admin" asp-action="WerkervaringOpslaan">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <div class="beheer-kolommen">
+            <div class="veld">
+                <label asp-for="Periode">Periode</label>
+                <input class="invoer" asp-for="Periode" placeholder="Bijv. 2022 — 2023" />
+                <span class="veldfout" asp-validation-for="Periode"></span>
+            </div>
+            <div class="veld">
+                <label asp-for="Volgorde">Volgorde</label>
+                <input class="invoer" asp-for="Volgorde" type="number" min="1" />
+            </div>
+            <div class="veld">
+                <label asp-for="Bedrijf">Bedrijf</label>
+                <input class="invoer" asp-for="Bedrijf" />
+                <span class="veldfout" asp-validation-for="Bedrijf"></span>
+            </div>
+            <div class="veld">
+                <label asp-for="Functie">Functie</label>
+                <input class="invoer" asp-for="Functie" />
+            </div>
+        </div>
+        <div class="veld">
+            <label asp-for="Locatie">Locatie</label>
+            <input class="invoer" asp-for="Locatie" />
+        </div>
+        <div class="veld">
+            <label asp-for="Omschrijving">Omschrijving</label>
+            <textarea class="invoer" asp-for="Omschrijving" rows="4"></textarea>
+            <span class="veldfout" asp-validation-for="Omschrijving"></span>
+        </div>
+        <div class="veld">
+            <label>Status</label>
+            <div class="keuze" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.4rem;">
+                <label>
+                    <input type="radio" name="IsGepubliceerd" value="true" asp-for="IsGepubliceerd" />
+                    <span>Gepubliceerd</span>
+                </label>
+                <label>
+                    <input type="radio" name="IsGepubliceerd" value="false" asp-for="IsGepubliceerd" />
+                    <span>Privé</span>
+                </label>
+            </div>
+        </div>
+        <button class="knop knop--primair" type="submit">Opslaan</button>
+    </form>
+</div>

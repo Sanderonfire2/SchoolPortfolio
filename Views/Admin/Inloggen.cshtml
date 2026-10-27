@@ -1,0 +1,29 @@
+@{
+    ViewData["Titel"] = "Inloggen";
+    Layout = "_Layout";
+}
+
+<section class="pagina">
+    <div class="container">
+        <div class="inlogpaneel">
+            <h1>Beheer · inloggen</h1>
+            <form method="post" asp-controller="Admin" asp-action="Inloggen">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="terug" value="@ViewBag.TerugUrl" />
+                <div class="veld">
+                    <label for="wachtwoord">Wachtwoord</label>
+                    <input class="invoer" type="password" id="wachtwoord" name="wachtwoord" autocomplete="current-password" autofocus />
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        foreach (var fout in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        {
+                            <span class="veldfout">@fout.ErrorMessage</span>
+                        }
+                    }
+                </div>
+                <button class="knop knop--primair" type="submit" style="width:100%; justify-content:center;">Inloggen</button>
+            </form>
+            <p class="formuliernota">Alleen bedoeld voor instelling van de eigenaar van deze site.</p>
+        </div>
+    </div>
+</section>

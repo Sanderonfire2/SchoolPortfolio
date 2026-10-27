@@ -1,0 +1,111 @@
+@using Microsoft.EntityFrameworkCore
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@inject SiteDbContext Db
+@{
+    var profiel = Db.Profielen.FirstOrDefault();
+    var projecten = Db.Projecten
+        .Include(p => p.Afbeeldingen)
+        .Where(p => p.IsUitgelicht)
+        .OrderBy(p => p.Volgorde)
+        .ToList();
+    var stappen = Db.Opleidingen.OrderBy(o => o.Volgorde).ToList();
+    ViewData["Titel"] = "";
+}
+
+<section class="hero">
+    <div class="container">
+        <span class="over-label">Portfolio · Elektriciteit en installaties</span>
+        <h1 class="hero-titel">@(profiel?.VolledigeNaam ?? "Sander Van Praet")</h1>
+        <p class="hero-intro">@(profiel?.KorteIntroductie)</p>
+        <div class="hero-kenmerken">
+            <span><strong>@(Db.Opleidingen.OrderBy(o => o.Volgorde).FirstOrDefault()?.Titel.Split('—')[0].Trim() ?? "Graduaat Programmeren")</strong></span>
+            <span>@(profiel?.Woonplaats)</span>
+            <span>Open voor stage en startbaan</span>
+        </div>
+        <div class="hero-acties">
+            <a class="knop knop--primair" href="/projecten">Bekijk mijn projecten <span aria-hidden="true">→</span></a>
+            <a class="knop" href="/over-mij">Over mij</a>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <span class="hr" style="display:block;border-top:1px solid var(--lijn);"></span>
+</div>
+
+<section class="sectie">
+    <div class="container">
+        <div class="sectie-kop">
+            <div>
+                <span class="over-label">Uitgelicht werk</span>
+                <h2>Geselecteerde projecten</h2>
+            </div>
+            <a class="koppellink" href="/projecten">Alle projecten <span class="pijl" aria-hidden="true">→</span></a>
+        </div>
+        <div class="projectrijen">
+            @for (var i = 0; i < projecten.Count; i++)
+            {
+                var project = projecten[i];
+                <article class="projectrij">
+                    <a class="projectrij-beeld" href="/projecten/@project.Slug" tabindex="-1" aria-hidden="true">
+                        @if (!string.IsNullOrWhiteSpace(project.CoverPad))
+                        {
+                            <img src="@project.CoverPad" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <span class="beeld-placeholder" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4Zm2 2v7l3-3 4 5 4-4 3 2V7Zm2.5 2A1.5 1.5 0 1 1 8 7.5 1.5 1.5 0 0 1 10.5 9Z" /></svg>
+                            </span>
+                        }
+                    </a>
+                    <div>
+                        <div class="projectrij-index">@(string.Format("{0:00}", i + 1))</div>
+                        <h3><a href="/projecten/@project.Slug">@project.Titel</a></h3>
+                        <p>@project.KorteSamenvatting</p>
+                        <div class="projectrij-venster">@project.Periode · @project.Rol</div>
+                    </div>
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="sectie">
+    <div class="container sectie-kop">
+        <div>
+            <span class="over-label">Kennismaking</span>
+            <h2>Kort over wie ik ben</h2>
+        </div>
+    </div>
+    <div class="container overgrid">
+        <div class="overfoto">
+            @if (!string.IsNullOrWhiteSpace(profiel?.ProfielfotoPad))
+            {
+                <img src="@profiel.ProfielfotoPad" alt="Profielfoto van @(profiel?.VolledigeNaam)" />
+            }
+        </div>
+        <div class="overtekst">
+            @{
+                var alineas = (profiel?.OverMijTekst ?? "").Split("\n\n");
+                for (var i = 0; i < Math.Min(alineas.Length, 2); i++)
+                {
+                    <p>@alineas[i]</p>
+                }
+            }
+            <p style="margin-top:1.6rem;">
+                <a class="koppellink" href="/over-mij">Volledig verhaal <span class="pijl" aria-hidden="true">→</span></a>
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="cta-strook">
+    <div class="container">
+        <span class="over-label">Contact</span>
+        <h2>Waar ik nu naar zoek</h2>
+        <p>@(Db.PaginaInhouden.Find("intro-contact")?.Inhoud)</p>
+        <a class="knop knop--primair" href="/contact">Stuur een bericht <span aria-hidden="true">→</span></a>
+    </div>
+</section>

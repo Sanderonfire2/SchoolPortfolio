@@ -1,0 +1,126 @@
+@using SchoolPortfolio.Data
+@model Project
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = Model.Titel;
+}
+
+<section class="pagina">
+    <div class="container detail-kop">
+        <nav class="broodkruimel" aria-label="Kruimelpad">
+            <a href="/projecten">Projecten</a>
+            @if (!string.IsNullOrWhiteSpace(Model.Schooljaar))
+            {
+                <span class="scheid" aria-hidden="true">/</span>
+                var jaarSlug = Model.Schooljaar.ToLowerInvariant().Replace(" ", "-");
+                <a href="/projecten/@jaarSlug">@Model.Schooljaar</a>
+                if (!string.IsNullOrWhiteSpace(Model.Vak))
+                {
+                    <span class="scheid" aria-hidden="true">/</span>
+                    var vakSlug = Model.Vak.ToLowerInvariant().Replace(" ", "-").Replace("ë", "e");
+                    <a href="/projecten/@jaarSlug/@vakSlug">@Model.Vak</a>
+                }
+            }
+            <span class="scheid" aria-hidden="true">/</span>
+            <span>@Model.Titel</span>
+        </nav>
+        <h1 class="detail-titel">@Model.Titel</h1>
+        <p class="detail-inleiding">@Model.KorteSamenvatting</p>
+        @if (!string.IsNullOrWhiteSpace(Model.CoverPad))
+        {
+            <div class="detail-gemaakt projectrij-beeld" style="max-width:44rem;">
+                <img src="@Model.CoverPad" alt="Hoofdbeeld van @Model.Titel" />
+            </div>
+        }
+    </div>
+
+    <div class="container detail-raster">
+        <div class="detail-proza">
+            <h2>De opdracht</h2>
+            @foreach (var alinea in (Model.Omschrijving ?? "").Split("\n\n"))
+            {
+                <p>@alinea</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Uitdaging))
+            {
+                <h2>Uitdaging</h2>
+                <p>@Model.Uitdaging</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Geleerd))
+            {
+                <h2>Wat ik leerde</h2>
+                <p>@Model.Geleerd</p>
+            }
+        </div>
+
+        <aside>
+            <dl class="feitelijst">
+                <div><dt>Periode</dt><dd>@(Model.Periode ?? "—")</dd></div>
+                <div><dt>Rol</dt><dd>@(Model.Rol ?? "—")</dd></div>
+                <div><dt>Categorie</dt><dd>@(Model.Categorie ?? "—")</dd></div>
+                <div><dt>Technologieën</dt><dd>@(Model.Technologieen ?? "—")</dd></div>
+            </dl>
+        </aside>
+    </div>
+</section>
+
+@if (Model.Afbeeldingen.Count > 0)
+{
+    <section class="sectie">
+        <div class="container">
+            <div class="sectie-kop">
+                <h2>Foto's, video's en tekeningen</h2>
+            </div>
+            <div class="gallerij">
+                @foreach (var item in Model.Afbeeldingen.OrderBy(a => a.Volgorde))
+                {
+                    @if (item.Soort == "video")
+                    {
+                        <figure>
+                            <video src="@item.Pad" controls preload="metadata" class="gallerij-video"></video>
+                            @if (!string.IsNullOrWhiteSpace(item.Onderschrift))
+                            {
+                                <figcaption>@item.Onderschrift</figcaption>
+                            }
+                        </figure>
+                    }
+                    else if (item.Soort == "document")
+                    {
+                        <figure class="gallerij-document">
+                            <a class="document-kaart" href="@item.Pad" target="_blank" rel="noopener">
+                                <span class="document-glief" aria-hidden="true">📄</span>
+                                <span class="document-titel">@(item.Onderschrift ?? "Tekening (PDF)")</span>
+                                <span class="document-sub">Openen in nieuw tabblad ↗</span>
+                            </a>
+                        </figure>
+                    }
+                    else
+                    {
+                        <figure>
+                            <button type="button" data-vergroten
+                                    data-bron="@item.Pad"
+                                    data-bijschrift="@(item.Onderschrift)"
+                                    data-omschrijving="@(item.Onderschrift ?? "Afbeelding van " + Model.Titel)"
+                                    aria-label="Vergroot afbeelding: @(item.Onderschrift ?? "")">
+                                <img src="@item.Pad" alt="@(item.Onderschrift ?? "Afbeelding van " + Model.Titel)" loading="lazy" />
+                            </button>
+                            @if (!string.IsNullOrWhiteSpace(item.Onderschrift))
+                            {
+                                <figcaption>@item.Onderschrift</figcaption>
+                            }
+                        </figure>
+                    }
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<section class="cta-strook">
+    <div class="container sectie-kop" style="margin-bottom:1.2rem;">
+        <h2>Nieuwsgierig naar het geheel?</h2>
+    </div>
+    <div class="container">
+        <a class="koppellink" href="/projecten">← Terug naar alle projecten</a>
+    </div>
+</section>

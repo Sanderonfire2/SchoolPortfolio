@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 750">
+  <rect width="600" height="750" fill="#1e1f24"/>
+  <line x1="0" y1="600" x2="600" y2="600" stroke="#2c2d33" stroke-width="1"/>
+  <circle cx="300" cy="260" r="110" fill="none" stroke="#33343a" stroke-width="2"/>
+  <path d="M 300 220 a 40 40 0 1 1 0.1 0 M 240 350 q 60 -70 120 0" fill="none" stroke="#33343a" stroke-width="2"/>
+  <text x="300" y="660" font-family="Georgia, serif" font-size="30" fill="#bd9259" text-anchor="middle" letter-spacing="4">SV P</text>
+</svg>

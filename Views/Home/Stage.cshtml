@@ -1,0 +1,171 @@
+@using Microsoft.EntityFrameworkCore
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@using SchoolPortfolio.Services
+@inject SiteDbContext Db
+@inject UploadService uploads
+@{
+    ViewData["Titel"] = "Stage";
+    var filterJaar = ViewBag.FilterJaar as string;
+    var stagesQ = Db.Stages.OrderBy(s => s.Volgorde).Include(s => s.Rapporten).AsQueryable();
+    if (!string.IsNullOrWhiteSpace(filterJaar)) stagesQ = stagesQ.Where(s => s.Schooljaar == filterJaar);
+    var stages = stagesQ.ToList();
+    var eersteStage = stages.FirstOrDefault();
+    var introductie = Db.PaginaInhouden.Find("intro-stage")?.Inhoud;
+
+    // Aftelbaar: werkt alléén met een toekomstige startdatum in de database.
+    // Geen hardcoded datum; rescheduling werkt via de beheerpagina.
+    var dagen = eersteStage?.StartDatum is DateTime start ? (start.Date - DateTime.Today).Days : (int?)null;
+    var toonAftelbaar = dagen is int d && d > 0 && !string.IsNullOrWhiteSpace(filterJaar);
+    var isGestart = dagen is int d2 && d2 <= 0 && eersteStage?.StartDatum is not null && !string.IsNullOrWhiteSpace(filterJaar);
+}
+
+<section class="pagina">
+    <div class="container">
+        <nav class="broodkruimel" aria-label="Kruimelpad">
+            @if (!string.IsNullOrWhiteSpace(filterJaar))
+            {
+                <a href="/stage">Stage</a>
+                <span class="scheid" aria-hidden="true">/</span>
+                <span>@filterJaar</span>
+            }
+            else
+            {
+                <span class="over-label">Stageperiode</span>
+            }
+        </nav>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">@(string.IsNullOrWhiteSpace(filterJaar) ? "Stage" : $"Stage · {filterJaar}")</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+        @if (toonAftelbaar)
+        {
+            var resterendeDagen = dagen!.Value;
+            <div class="aftelklok" role="status" data-aftelklok data-startdatum="@eersteStage!.StartDatum!.Value.ToString("yyyy-MM-dd")">
+                <span class="aftelklok-getal" data-aftelklok-getal>@resterendeDagen</span>
+                <span class="aftelklok-tekst">
+                    <span data-aftelklok-tekst>@(resterendeDagen == 1 ? "dag" : "dagen") tot de start van mijn stage</span>
+                    <span class="tekst-sub">@(eersteStage.StartDatum!.Value.ToString("d MMMM yyyy"))</span>
+                </span>
+            </div>
+        }
+        else if (isGestart)
+        {
+            <div class="aftelklok aftelklok--gestart" role="status">
+                <span class="aftelklok-tekst">De stage is gestart — de dagrapporten verschijnen hieronder.</span>
+            </div>
+        }
+    </div>
+</section>
+
+@if (stages.Count == 0)
+{
+    <section class="pagina" style="padding-top:0;">
+        <div class="container">
+            <p class="tekst-sub">@(string.IsNullOrWhiteSpace(filterJaar) ? "De stagegegevens worden binnenkort aangevuld." : $"Geen stages via {filterJaar}.")</p>
+        </div>
+    </section>
+}
+
+@foreach (var stage in stages)
+{
+    <section class="pagina" style="padding-top:0;">
+        <div class="container">
+            <div class="feitgrid">
+                <dl class="feitelijst">
+                    <div><dt>Bedrijf</dt><dd>@stage.Bedrijf</dd></div>
+                    <div><dt>Functie</dt><dd>@stage.Functie</dd></div>
+                </dl>
+                <dl class="feitelijst">
+                    <div><dt>Periode</dt><dd>@stage.Periode</dd></div>
+                    <div><dt>Locatie</dt><dd>@(stage.Locatie ?? "—")</dd></div>
+                </dl>
+            </div>
+        </div>
+
+        <div class="container detail-raster">
+            <div class="detail-proza">
+                <h2>Over de stageplaats</h2>
+                @foreach (var alinea in stage.Omschrijving.Split("\n\n"))
+                {
+                    <p>@alinea</p>
+                }
+            </div>
+            <aside>
+                <div class="veldnaam" style="margin-bottom:0.6rem;">Mijn taken tijdens de stage</div>
+                @if (!string.IsNullOrWhiteSpace(stage.Taken))
+                {
+                    <ul class="taaklijst">
+                        @foreach (var taak in stage.Taken.Split("\n"))
+                        {
+                            <li>@taak</li>
+                        }
+                    </ul>
+                }
+            </aside>
+        </div>
+
+        <div class="container" style="margin-top:3rem;">
+            <div class="sectie-kop">
+                <h2>Dagrapporten</h2>
+                <p class="tekst-sub">Elke stage-dag heeft een eigen verslag — geordend van recente naar eerste dag.</p>
+            </div>
+            @if (stage.Rapporten.Any(r => r.IsGepubliceerd) || !string.IsNullOrWhiteSpace(stage.VerslagPad))
+            {
+                <div class="rapporten-raster">
+                    @foreach (var rapport in stage.Rapporten.Where(r => r.IsGepubliceerd).OrderByDescending(r => r.Datum))
+                    {
+                        <article class="rapport-kaart">
+                            <a class="rapport-kaart-premier" href="@rapport.Pad" target="_blank" rel="noopener">
+                                @if (uploads.VoorvertoningVan(rapport.Pad) is string voor)
+                                {
+                                    <img src="@voor" alt="Eerste pagina van @(rapport.Titel ?? "dagrapport")" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <div class="rapport-kaart-leeg" aria-hidden="true">
+                                        <span class="document-glief">📄</span>
+                                        <span>@System.IO.Path.GetFileName(rapport.Pad)</span>
+                                    </div>
+                                }
+                            </a>
+                            <div class="rapport-kaart-info">
+                                <span class="rapport-kaart-datum">@rapport.Datum.ToString("d MMMM yyyy")</span>
+                                <h3>@(rapport.Titel ?? $"Dagrapport {rapport.Datum.ToString("d-M-yyyy")}")</h3>
+                                <a class="koppellink" href="@rapport.Pad" target="_blank" rel="noopener">PDF openen <span class="pijl" aria-hidden="true">↗</span></a>
+                            </div>
+                        </article>
+                    }
+                    @* Oudere, losse stageverslag-PDF blijft behouden *@
+                    @if (!stage.Rapporten.Any(r => r.Pad == stage.VerslagPad) && !string.IsNullOrWhiteSpace(stage.VerslagPad))
+                    {
+                        <article class="rapport-kaart">
+                            <a class="rapport-kaart-premier" href="@stage.VerslagPad" target="_blank" rel="noopener">
+                                @if (uploads.VoorvertoningVan(stage.VerslagPad) is string oudeVoor)
+                                {
+                                    <img src="@oudeVoor" alt="Eerste pagina van het stageverslag" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <div class="rapport-kaart-leeg" aria-hidden="true">
+                                        <span class="document-glief">📄</span>
+                                        <span>@System.IO.Path.GetFileName(stage.VerslagPad)</span>
+                                    </div>
+                                }
+                            </a>
+                            <div class="rapport-kaart-info">
+                                <h3>Stageverslag</h3>
+                                <a class="koppellink" href="@stage.VerslagPad" target="_blank" rel="noopener">PDF openen <span class="pijl" aria-hidden="true">↗</span></a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="tekst-sub" style="font-style:italic;">De dagrapporten worden tijdens de stageperiode aangevuld.</p>
+            }
+        </div>
+    </section>
+}

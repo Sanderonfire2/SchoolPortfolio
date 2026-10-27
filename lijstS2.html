@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="nl" data-thema="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Projecten beheren · Schoolportfolio</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+        (function () {
+            var opgeslagen = null;
+            try { opgeslagen = localStorage.getItem("thema"); } catch (e) { }
+            document.documentElement.dataset.thema = opgeslagen === "light" || opgeslagen === "dark" ? opgeslagen : "dark";
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/site.css?v=AuX6-4fyfncuK0iJssuuk24XIy0NR1RxOTgbFd1ypXo" />
+</head>
+<body>
+    <a class="sla-link" href="#inhoud">Naar de inhoud</a>
+    <header class="balk">
+        <div class="container balk-binnen">
+            <a class="logo" href="/admin">
+                <span class="logo-teken">S</span>
+                <span>Beheer</span>
+            </a>
+            <ul class="menu">
+                <li><a href="/">Naar de site</a></li>
+            </ul>
+            <div class="balk-hulpmiddelen">
+                <button class="iconknop" type="button" data-themaknop
+                        aria-label="Wissel tussen donker en licht thema" title="Thema wisselen">
+                    <svg class="zon-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4.4" />
+                        <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" />
+                    </svg>
+                    <svg class="maan-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="beheer-layout">
+        <nav class="beheer-schakel" aria-label="Beheernavigatie">
+            <ul>
+                <li><a class="is-actief" href="/admin">Overzicht</a></li>
+                <li><a class="is-actief" href="/admin/projecten">Projecten</a></li>
+                <li><a class="" href="/admin/opleidingen">Opleidingen</a></li>
+                <li><a class="" href="/admin/stages">Stage</a></li>
+                <li><a class="" href="/admin/werkervaringen">Werkervaring</a></li>
+                <li><a class="" href="/admin/inhoud">Inleidingsteksten</a></li>
+                <li><a class="" href="/admin/berichten">Berichten</a></li>
+                <li><a class="" href="/admin/profiel">Profiel</a></li>
+            </ul>
+        </nav>
+        <div class="beheer-inhoud" id="inhoud">
+            
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inhoud</span>
+        <h1>Projecten</h1>
+    </div>
+    <a class="knop knop--primair" href="/admin/projecten/nieuw">Nieuw project</a>
+</div>
+
+
+<table class="beheer-tabel">
+    <thead>
+        <tr><th>Titel</th><th>Periode</th><th>Categorie</th><th>Uitgelicht</th><th>Volgorde</th><th style="text-align:right;">Acties</th></tr>
+    </thead>
+    <tbody>
+            <tr>
+                <td class="cel-sterk">Multi Upload Test</td>
+                <td></td>
+                <td></td>
+                <td>&#x2014;</td>
+                <td>0</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/multi-upload-test">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/9/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/9/verwijderen" onsubmit="return confirm('Project “Multi Upload Test” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">Cover Test Final</td>
+                <td></td>
+                <td></td>
+                <td>&#x2014;</td>
+                <td>0</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/cover-test-final">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/10/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/10/verwijderen" onsubmit="return confirm('Project “Cover Test Final” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">Installatiestudie nieuwbouwwoning</td>
+                <td>2026 &#xB7; Semester 2</td>
+                <td>Electrische installaties</td>
+                <td>Ja</td>
+                <td>1</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/installatiestudie-woning">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/1/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/1/verwijderen" onsubmit="return confirm('Project “Installatiestudie nieuwbouwwoning” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">Test Project Cover</td>
+                <td></td>
+                <td></td>
+                <td>&#x2014;</td>
+                <td>1</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/test-project-cover">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/7/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/7/verwijderen" onsubmit="return confirm('Project “Test Project Cover” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">Motorsturing met herstartblok</td>
+                <td>2025 &#xB7; Semester 1</td>
+                <td>Motorsturing</td>
+                <td>Ja</td>
+                <td>2</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/motorsturing">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/2/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/2/verwijderen" onsubmit="return confirm('Project “Motorsturing met herstartblok” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">Stopcontact en tuinlicht buiten</td>
+                <td>2025</td>
+                <td>Praktische opdracht</td>
+                <td>Ja</td>
+                <td>3</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/stopcontact-buiten">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/3/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/3/verwijderen" onsubmit="return confirm('Project “Stopcontact en tuinlicht buiten” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">Installatieplan leeszone</td>
+                <td>2024 &#xB7; Semester 2</td>
+                <td>Electrische schema&#x27;s</td>
+                <td>&#x2014;</td>
+                <td>4</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/installatieplan-leeszone">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/4/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/4/verwijderen" onsubmit="return confirm('Project “Installatieplan leeszone” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="cel-sterk">test</td>
+                <td>dw1</td>
+                <td>test</td>
+                <td>&#x2014;</td>
+                <td>6</td>
+                <td>
+                    <div class="beheer-acties">
+                        <a class="knop knop--klein" href="/projecten/test">Bekijken</a>
+                        <a class="knop knop--klein" href="/admin/projecten/8/bewerken">Bewerken</a>
+                        <form method="post" action="/admin/projecten/8/verwijderen" onsubmit="return confirm('Project “test” verwijderen?');">
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                            <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+    </tbody>
+</table>
+
+            <div class="voetschrift-basisregel" style="margin-top:2.5rem;">
+                <span>Beheeromgeving · Schoolportfolio</span>
+                <form method="post" action="/admin/uitloggen" style="display:inline;">
+                    <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjoq3wcSQaoUELz3dQ9ikZ6sCBHc36Y__YGYKQ5RR9JWzGKXhWvVk5aToissVZRM-lRu-gS_XFuIu9npOIHakR6Xv_k4lD1uYecUBQgoTLM67Tjub0t9cldEbW7aVsQSPU-FMKY7I62sDXY_pD3qBQ5XBulItC0kVonu3dmIT3aGdQ" />
+                    <button class="knop knop--klein knop--stil" type="submit">Uitloggen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/site.js?v=HM1ZCowF_KnKEniXMvJGSS8kA0zI-HTBLK0hN4hi8hA"></script>
+</body>
+</html>

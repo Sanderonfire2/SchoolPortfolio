@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#191a1e"/>
+  <rect x="90" y="80" width="420" height="70" fill="#1e1f24" stroke="#33343a"/>
+  <rect x="90" y="170" width="420" height="70" fill="#1e1f24" stroke="#33343a"/>
+  <rect x="90" y="260" width="420" height="70" fill="#1e1f24" stroke="#33343a"/>
+  <rect x="90" y="350" width="420" height="70" fill="#1e1f24" stroke="#33343a"/>
+  <circle cx="130" cy="115" r="14" fill="#33343a"/>
+  <circle cx="130" cy="205" r="14" fill="#bd9259" opacity="0.8"/>
+  <circle cx="130" cy="295" r="14" fill="#33343a"/>
+  <circle cx="130" cy="385" r="14" fill="#bd9259" opacity="0.5"/>
+  <line x1="170" y1="140" x2="420" y2="140" stroke="#24252b"/>
+  <line x1="170" y1="230" x2="420" y2="230" stroke="#24252b"/>
+  <line x1="170" y1="320" x2="420" y2="320" stroke="#24252b"/>
+  <line x1="170" y1="410" x2="420" y2="410" stroke="#24252b"/>
+  <path d="M 570 100 L 810 100 L 810 500 L 570 500 Z" fill="none" stroke="#2c2d33"/>
+  <path d="M 570 400 L 690 400 L 690 500 L 570 500 Z" fill="#bd9259" opacity="0.14"/>
+  <line x1="570" y1="170" x2="810" y2="170" stroke="#24252b"/>
+  <line x1="570" y1="240" x2="810" y2="240" stroke="#24252b"/>
+</svg>

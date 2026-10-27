@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#191a1e"/>
+  <line x1="100" y1="100" x2="800" y2="100" stroke="#33343a"/>
+  <text x="100" y="70" font-family="Georgia, serif" font-size="18" fill="#55565c">Scorebord</text>
+  <g stroke="#33343a">
+    <line x1="100" y1="160" x2="100" y2="480"/>
+    <line x1="290" y1="160" x2="290" y2="480"/>
+    <line x1="480" y1="160" x2="480" y2="480"/>
+    <line x1="670" y1="160" x2="670" y2="480"/>
+  </g>
+  <g stroke="#24252b">
+    <line x1="100" y1="240" x2="670" y2="240"/>
+    <line x1="100" y1="320" x2="670" y2="320"/>
+    <line x1="100" y1="400" x2="670" y2="400"/>
+  </g>
+  <circle cx="195" cy="200" r="6" fill="#bd9259"/>
+  <circle cx="385" cy="280" r="6" fill="#bd9259" opacity="0.7"/>
+  <circle cx="575" cy="360" r="6" fill="#bd9259" opacity="0.45"/>
+  <path d="M 195 200 L 385 280 L 575 360" fill="none" stroke="#bd9259" stroke-width="2" opacity="0.6"/>
+  <rect x="100" y="500" width="180" height="14" fill="#1e1f24"/>
+  <rect x="100" y="500" width="110" height="14" fill="#bd9259" opacity="0.7"/>
+</svg>

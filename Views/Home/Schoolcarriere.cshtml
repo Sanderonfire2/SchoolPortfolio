@@ -1,0 +1,53 @@
+@using SchoolPortfolio.Data
+@using SchoolPortfolio.Models
+@inject SiteDbContext Db
+@{
+    ViewData["Titel"] = "Schoolcarrière";
+    var opleidingen = Db.Opleidingen.OrderBy(o => o.Volgorde).ToList();
+    var introductie = Db.PaginaInhouden.Find("intro-schoolcarriere")?.Inhoud;
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">Opleiding</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">Schoolcarrière</h1>
+        @if (!string.IsNullOrWhiteSpace(introductie))
+        {
+            <p class="hero-intro">@introductie</p>
+        }
+    </div>
+</section>
+
+<section class="pagina" style="padding-top:0;">
+    <div class="container">
+        <div class="tijdlijn">
+            @foreach (var opleiding in opleidingen)
+            {
+                <div class="tijdlijn-periode">@opleiding.Periode</div>
+                <div class="tijdlijn-lijn"><span class="tijdlijn-top"></span></div>
+                <div class="tijdlijn-item">
+                    <header>
+                        <h3>@opleiding.Titel</h3>
+                        <span class="instelling">
+                            @if (!string.IsNullOrWhiteSpace(opleiding.Instelling))
+                            {
+                                <text>@opleiding.Instelling</text>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(opleiding.Locatie))
+                            {
+                                <text>@(string.IsNullOrWhiteSpace(opleiding.Instelling) ? "" : " · ")@opleiding.Locatie</text>
+                            }
+                        </span>
+                    </header>
+                    <p>@opleiding.Omschrijving</p>
+                </div>
+                @if (opleiding != opleidingen.Last())
+                {
+                    <div></div>
+                    <div></div>
+                    <div class="tijdlijn-tussenzet"></div>
+                }
+            }
+        </div>
+    </div>
+</section>

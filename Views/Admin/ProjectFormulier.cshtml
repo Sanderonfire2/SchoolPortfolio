@@ -1,0 +1,377 @@
+@using SchoolPortfolio.Models
+@model Project
+@{
+    Layout = "_LayoutBeheer";
+    var isNieuw = ViewBag.IsNieuw is true;
+    var bestaandeGallerij = ViewBag.BestandGallerij as List<GallerijAfbeelding> ?? new();
+}
+<div class="kopregel">
+    <div>
+        <span class="over-label">Projecten</span>
+        <h1>@(isNieuw ? "Nieuw project" : "Project bewerken")</h1>
+    </div>
+    <a class="koppellink" href="/admin/projecten">← Terug naar het overzicht</a>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="kenbaar" role="alert" style="border-color:var(--gevaar);">
+        @foreach (var fout in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@fout.ErrorMessage</div>
+        }
+    </div>
+}
+
+<form method="post" enctype="multipart/form-data"
+  asp-controller="Admin"
+  asp-action="@(isNieuw ? "ProjectNieuw" : "ProjectBewerken")"
+  asp-route-id="@(isNieuw ? "" : Model.Id)">
+    @Html.AntiForgeryToken()
+
+    <div class="veld">
+        <label asp-for="Titel">Titel</label>
+        <input class="invoer" asp-for="Titel" />
+        <span class="veldfout" asp-validation-for="Titel"></span>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label asp-for="Schooljaar">Schooljaar</label>
+            <select class="invoer" asp-for="Schooljaar">
+                <option value="">— niet op een jaar geplaatst —</option>
+                @foreach (var jaar in new[] { "3de jaar", "4de jaar", "5de jaar", "6de jaar" })
+                {
+                    if (Model.Schooljaar == jaar)
+                    {
+                        <option value="@jaar" selected="selected">@jaar</option>
+                    }
+                    else
+                    {
+                        <option value="@jaar">@jaar</option>
+                    }
+                }
+            </select>
+            <span class="tekst-sub tekst-sm">Dit bepaalt het menu: bij 3de/4de jaar kies je ook een vak.</span>
+        </div>
+        <div class="veld">
+            <label asp-for="Vak">Vak</label>
+            <select class="invoer" asp-for="Vak" data-vakkeuze>
+                <option value="">— geen vak —</option>
+            </select>
+            <span class="tekst-sub tekst-sm">Kies eerst een schooljaar.</span>
+        </div>
+        <div class="veld">
+            <label asp-for="Categorie">Categorie</label>
+            <input class="invoer" asp-for="Categorie" placeholder="Bijv. Elektrische installaties" />
+        </div>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label asp-for="Periode">Periode</label>
+            <input class="invoer" asp-for="Periode" placeholder="Bijv. 2026 · Semester 2" />
+        </div>
+        <div class="veld">
+            <label asp-for="Rol">Rol</label>
+            <input class="invoer" asp-for="Rol" placeholder="Bijv. Solo, duo, werkopdracht (2)" />
+        </div>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label asp-for="Technologieen">Onderdelen en technieken</label>
+            <input class="invoer" asp-for="Technologieen" placeholder="Bijv. Installatieschema's, belastingberekeningen" />
+        </div>
+        <input type="hidden" asp-for="Slug" />
+    </div>
+
+    <div class="veld">
+        <label asp-for="KorteSamenvatting">Korte samenvatting</label>
+        <textarea class="invoer" asp-for="KorteSamenvatting" rows="2"></textarea>
+        <span class="veldfout" asp-validation-for="KorteSamenvatting"></span>
+    </div>
+
+    <div class="veld">
+        <label asp-for="Omschrijving">Omschrijving <span style="text-transform:none;font-weight:400;">(witregel tussen alinea's)</span></label>
+        <textarea class="invoer" asp-for="Omschrijving" rows="6"></textarea>
+        <span class="veldfout" asp-validation-for="Omschrijving"></span>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label asp-for="Uitdaging">Uitdaging</label>
+            <textarea class="invoer" asp-for="Uitdaging" rows="3" style="min-height:5rem;"></textarea>
+        </div>
+        <div class="veld">
+            <label asp-for="Geleerd">Wat ik leerde</label>
+            <textarea class="invoer" asp-for="Geleerd" rows="3" style="min-height:5rem;"></textarea>
+        </div>
+    </div>
+
+ <script>
+// Vakkeuze: de opties passen bij het gekozen schooljaar.
+(function () {
+  var vak = document.querySelector('[data-vakkeuze]');
+  var jaar = document.querySelector('[asp-for="Schooljaar"], [name="Schooljaar"]');
+  if (!vak || !jaar) return;
+  var gekozen = '@Model.Vak';
+  var vakken = { '3de jaar': ['Elektriciteit', 'Constructie'], '4de jaar': ['Elektriciteit', 'Constructietechnieken'], '5de jaar': [], '6de jaar': [] };
+  function bijwerk() {
+    var j = jaar.value || '';
+    var opties = vakken[j] || [];
+    vak.innerHTML = '';
+    var leeg = document.createElement('option');
+    leeg.value = '';
+    leeg.textContent = ' geen vak ';
+    vak.appendChild(leeg);
+    if (opties.length === 0) {
+      vak.parentElement.style.display = 'none';
+    } else {
+      vak.parentElement.style.display = '';
+      opties.forEach(function (o) {
+        var k = document.createElement('option');
+        k.value = o;
+        k.textContent = o;
+        if (o === gekozen) k.selected = true;
+        vak.appendChild(k);
+      });
+    }
+  }
+  jaar.addEventListener('change', bijwerk);
+  bijwerk();
+})();
+</script>
+
+    <div class="veld">
+        <label for="IsUitgelicht">Uitgelicht op de startpagina</label>
+        <label style="margin-bottom:0;">
+            <input asp-for="IsUitgelicht" type="checkbox" style="width:auto; margin-right:0.5rem;" />
+            <span style="font-weight:500; letter-spacing:normal; text-transform:none; color:var(--tekst-sub);">Toon dit project onder "Geselecteerde projecten"</span>
+        </label>
+    </div>
+
+    <div class="veld">
+        <label>Status</label>
+        <div class="status-keuze">
+            <label class="status-kaart">
+                <input type="radio" name="IsGepubliceerd" value="true" asp-for="IsGepubliceerd" />
+                <span class="status-kaart-inhoud">
+                    <strong>Gepubliceerd</strong>
+                    <small>Zichtbaar op de publieke site</small>
+                </span>
+            </label>
+            <label class="status-kaart">
+                <input type="radio" name="IsGepubliceerd" value="false" asp-for="IsGepubliceerd" />
+                <span class="status-kaart-inhoud">
+                    <strong>Privé</strong>
+                    <small>Alleen zichtbaar in het beheer</small>
+                </span>
+            </label>
+        </div>
+    </div>
+
+    <div class="veld">
+        <label>Media — afbeeldingen, video's en tekeningen (PDF)</label>
+        <p class="tekst-sub">Upload hieronder alles wat bij het project hoort. Afbeeldingen worden klikbaar om als banner/cover te kiezen; video's en PDF's worden op de projectpagina in de gallerij getoond. Op dezelfde pagina opslaan en meteen verderwerken.</p>
+        @if (bestaandeGallerij.Count == 0)
+        {
+            <p class="tekst-sub tekst-sm" style="font-style:italic;">Nog geen media — upload er hieronder een paar.</p>
+        }
+        else
+        {
+            var afbeeldingen = bestaandeGallerij.Where(a => a.Soort == "afbeelding").ToList();
+            var overige = bestaandeGallerij.Where(a => a.Soort != "afbeelding").ToList();
+            if (afbeeldingen.Count > 0)
+            {
+                <p class="tekst-sub tekst-sm" style="font-weight:600; margin-bottom:0.4rem;">Klik op een afbeelding om die als banner/cover te kiezen:</p>
+                <div class="cover-raster" style="margin-bottom:0.8rem;">
+                    @for (var i = 0; i < afbeeldingen.Count; i++)
+                    {
+                        var afbeelding = afbeeldingen[i];
+                        if (afbeelding.IsHoofdCover)
+                        {
+                            <label class="cover-keuze geselecteerd" for="hoofdCover-@afbeelding.Id">
+                                <input type="radio" name="hoofdCover" value="@afbeelding.Id" id="hoofdCover-@afbeelding.Id" checked="checked" />
+                                <img src="@afbeelding.Pad" alt="Afbeelding" class="cover-miniatuur" />
+                                @if (afbeelding.Onderschrift != null)
+                                {
+                                    <span class="cover-bijschrift">@afbeelding.Onderschrift</span>
+                                }
+                                <span class="cover-badge">Cover</span>
+                            </label>
+                        }
+                        else
+                        {
+                            <label class="cover-keuze" for="hoofdCover-@afbeelding.Id">
+                                <input type="radio" name="hoofdCover" value="@afbeelding.Id" id="hoofdCover-@afbeelding.Id" />
+                                <img src="@afbeelding.Pad" alt="Afbeelding" class="cover-miniatuur" />
+                                @if (afbeelding.Onderschrift != null)
+                                {
+                                    <span class="cover-bijschrift">@afbeelding.Onderschrift</span>
+                                }
+                            </label>
+                        }
+                    }
+                </div>
+            }
+            if (overige.Count > 0)
+            {
+                <p class="tekst-sub tekst-sm" style="font-weight:600; margin-bottom:0.4rem;">Video's en tekeningen (worden in de gallerij op de projectpagina getoond):</p>
+                <div class="cover-raster" style="margin-bottom:0.8rem;">
+                    @for (var i = 0; i < overige.Count; i++)
+                    {
+                        var item = overige[i];
+                        if (item.Soort == "video")
+                        {
+                            <div class="cover-keuze media-video">
+                                <video src="@item.Pad" class="cover-miniatuur" muted></video>
+                                <span class="cover-badge" style="top:0.4rem;left:0.4rem;">Video</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <a class="cover-keuze media-document" href="@item.Pad" target="_blank" rel="noopener" title="Open tekening in een nieuw tabblad">
+                                <span class="document-glief" aria-hidden="true">📄</span>
+                                <span class="document-naam">@item.Onderschrift - PDF</span>
+                                <span class="cover-badge" style="top:0.4rem;left:0.4rem;">PDF</span>
+                            </a>
+                        }
+                    }
+                </div>
+            }
+        }
+
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" name="gallerijBestanden" id="gallerijInvoer" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,video/quicktime,application/pdf" hidden />
+            <span class="upload-icoon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </span>
+            <strong>Klik hier om media te kiezen</strong>
+            <small class="tekst-sub">Afbeeldingen (JPG, PNG, WebP, GIF, SVG) · video's (MP4, WebM, MOV) · PDF · meerdere tegelijk</small>
+        </div>
+        <div id="nieuweGallerijVoorbeeld" class="uploadgallerij-voorbeeld"></div>
+        <script>
+        (function () {
+            var zone = document.getElementById('uploadZone');
+            var invoer = document.getElementById('gallerijInvoer');
+            var voorbeeld = document.getElementById('nieuweGallerijVoorbeeld');
+            if (!zone || !invoer) return;
+
+            var wachtrij = []; // DataTransfer-bestanden die de gebruiker wil uploaden
+
+            function bijwerk() {
+                voorbeeld.innerHTML = '';
+                wachtrij.forEach(function (f) {
+                    var omhak = document.createElement('span');
+                    omhak.className = 'upload-kiezer';
+                    if (f._isVideo) {
+                        var vid = document.createElement('video');
+                        vid.src = URL.createObjectURL(f);
+                        vid.muted = true;
+                        vid.className = 'kiezer-video';
+                        omhak.appendChild(vid);
+                        var etiket = document.createElement('span');
+                        etiket.className = 'kiezer-soort';
+                        etiket.textContent = 'Video';
+                        omhak.appendChild(etiket);
+                    } else if (f._isPdf) {
+                        var dok = document.createElement('span');
+                        dok.className = 'kiezer-document';
+                        dok.textContent = '📄';
+                        omhak.appendChild(dok);
+                        var etiket = document.createElement('span');
+                        etiket.className = 'kiezer-soort';
+                        etiket.textContent = 'PDF';
+                        omhak.appendChild(etiket);
+                    } else {
+                        var img = document.createElement('img');
+                        img.src = f._url;
+                        img.alt = f.name;
+                        img.title = f.name;
+                        omhak.appendChild(img);
+                    }
+                    var kruisje = document.createElement('button');
+                    kruisje.type = 'button';
+                    kruisje.className = 'upload-kiezer-sluit';
+                    kruisje.textContent = '×';
+                    kruisje.title = 'Verwijder van de wachtrij';
+                    kruisje.addEventListener('click', function () {
+                        var idx = wachtrij.indexOf(f);
+                        if (idx >= 0) wachtrij.splice(idx, 1);
+                        bouwFiles();
+                        bijwerk();
+                    });
+                    omhak.appendChild(kruisje);
+                    voorbeeld.appendChild(omhak);
+                });
+                var info = document.createElement('span');
+                info.className = 'tekst-sm tekst-sub';
+                info.textContent = wachtrij.length === 0 ? 'Nog geen nieuwe media gekozen' : (wachtrij.length === 1 ? '1 bestand in de wachtrij' : wachtrij.length + ' bestanden in de wachtrij');
+                voorbeeld.appendChild(info);
+            }
+
+            function bouwFiles() {
+                var cmd = new DataTransfer();
+                wachtrij.forEach(function (x) { cmd.items.add(x); });
+                invoer.files = cmd.files;
+            }
+
+            function voegToe(bestandslijst) {
+                Array.prototype.forEach.call(bestandslijst, function (f) {
+                    var isBeeld = f.type && f.type.indexOf('image/') === 0;
+                    var isVideo = f.type && f.type.indexOf('video/') === 0;
+                    var isPdf = f.type === 'application/pdf' || (f.name || '').toLowerCase().indexOf('.pdf') === (f.name || '').length - 4;
+                    if (!isBeeld && !isVideo && !isPdf) return;
+                    var cmd = new DataTransfer();
+                    wachtrij.forEach(function (x) { cmd.items.add(x); });
+                    cmd.items.add(f);
+                    f._isVideo = isVideo;
+                    f._isPdf = isPdf;
+                    if (isBeeld) {
+                        f._url = URL.createObjectURL(f);
+                    } else {
+                        f._url = null;
+                        f._naam = f.name;
+                    }
+                    wachtrij.push(f);
+                    invoer.files = cmd.files;
+                });
+                bijwerk();
+            }
+
+            zone.addEventListener('click', function () { invoer.click(); });
+            zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('sleep-over'); });
+            zone.addEventListener('dragleave', function () { zone.classList.remove('sleep-over'); });
+            zone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                zone.classList.remove('sleep-over');
+                if (e.dataTransfer && e.dataTransfer.files.length) voegToe(e.dataTransfer.files);
+            });
+            invoer.addEventListener('change', function () {
+                if (invoer.files && invoer.files.length) voegToe(invoer.files);
+            });
+        })();
+        </script>
+        <script>
+            // Markeren welke kaart de cover is, meteen na laden en bij klikken.
+            (function () {
+                function bijwerk() {
+                    document.querySelectorAll('.cover-keuze').forEach(function (kaart) {
+                        var radio = kaart.querySelector('input[name="hoofdCover"]');
+                        kaart.classList.toggle('geselecteerd', !!(radio && radio.checked));
+                    });
+                }
+                document.querySelectorAll('input[name="hoofdCover"]').forEach(function (radio) {
+                    radio.addEventListener('change', bijwerk);
+                });
+                bijwerk();
+            })();
+        </script>
+    </div>
+
+    <div style="display:flex; gap:0.8rem; margin-top:2rem;">
+        <button class="knop knop--primair" type="submit">Opslaan</button>
+        <a class="knop knop--stil" href="/admin/projecten">Annuleren</a>
+    </div>
+</form>

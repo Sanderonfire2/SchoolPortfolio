@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="nl" data-thema="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project bewerken · Schoolportfolio</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+        (function () {
+            var opgeslagen = null;
+            try { opgeslagen = localStorage.getItem("thema"); } catch (e) { }
+            document.documentElement.dataset.thema = opgeslagen === "light" || opgeslagen === "dark" ? opgeslagen : "dark";
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/site.css?v=AuX6-4fyfncuK0iJssuuk24XIy0NR1RxOTgbFd1ypXo" />
+</head>
+<body>
+    <a class="sla-link" href="#inhoud">Naar de inhoud</a>
+    <header class="balk">
+        <div class="container balk-binnen">
+            <a class="logo" href="/admin">
+                <span class="logo-teken">S</span>
+                <span>Beheer</span>
+            </a>
+            <ul class="menu">
+                <li><a href="/">Naar de site</a></li>
+            </ul>
+            <div class="balk-hulpmiddelen">
+                <button class="iconknop" type="button" data-themaknop
+                        aria-label="Wissel tussen donker en licht thema" title="Thema wisselen">
+                    <svg class="zon-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4.4" />
+                        <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" />
+                    </svg>
+                    <svg class="maan-icoon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="beheer-layout">
+        <nav class="beheer-schakel" aria-label="Beheernavigatie">
+            <ul>
+                <li><a class="is-actief" href="/admin">Overzicht</a></li>
+                <li><a class="is-actief" href="/admin/projecten">Projecten</a></li>
+                <li><a class="" href="/admin/opleidingen">Opleidingen</a></li>
+                <li><a class="" href="/admin/stages">Stage</a></li>
+                <li><a class="" href="/admin/werkervaringen">Werkervaring</a></li>
+                <li><a class="" href="/admin/inhoud">Inleidingsteksten</a></li>
+                <li><a class="" href="/admin/berichten">Berichten</a></li>
+                <li><a class="" href="/admin/profiel">Profiel</a></li>
+            </ul>
+        </nav>
+        <div class="beheer-inhoud" id="inhoud">
+            <div class="kopregel">
+    <div>
+        <span class="over-label">Projecten</span>
+        <h1>Project bewerken</h1>
+    </div>
+    <a class="koppellink" href="/admin/projecten">← Terug naar het overzicht</a>
+</div>
+
+
+<form method="post" enctype="multipart/form-data" action="/admin/projecten/7/bewerken">
+    
+
+    <div class="veld">
+        <label for="Titel">Titel</label>
+        <input class="invoer" type="text" data-val="true" data-val-required="The Titel field is required." id="Titel" name="Titel" value="Test Project Cover" />
+        <span class="veldfout field-validation-valid" data-valmsg-for="Titel" data-valmsg-replace="true"></span>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label for="Categorie">Categorie</label>
+            <input class="invoer" placeholder="Bijv. Elektrische installaties" type="text" id="Categorie" name="Categorie" value="" />
+        </div>
+        <div class="veld">
+            <label for="Periode">Periode</label>
+            <input class="invoer" placeholder="Bijv. 2026 · Semester 2" type="text" id="Periode" name="Periode" value="" />
+        </div>
+        <div class="veld">
+            <label for="Rol">Rol</label>
+            <input class="invoer" placeholder="Bijv. Solo, duo, werkopdracht (2)" type="text" id="Rol" name="Rol" value="" />
+        </div>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label for="Technologieen">Onderdelen en technieken</label>
+            <input class="invoer" placeholder="Bijv. Installatieschema's, belastingberekeningen" type="text" id="Technologieen" name="Technologieen" value="" />
+        </div>
+        <input type="hidden" id="Slug" name="Slug" value="test-project-cover" />
+    </div>
+
+    <div class="veld">
+        <label for="KorteSamenvatting">Korte samenvatting</label>
+        <textarea class="invoer" rows="2" data-val="true" data-val-required="The KorteSamenvatting field is required." id="KorteSamenvatting" name="KorteSamenvatting">
+Korte test</textarea>
+        <span class="veldfout field-validation-valid" data-valmsg-for="KorteSamenvatting" data-valmsg-replace="true"></span>
+    </div>
+
+    <div class="veld">
+        <label for="Omschrijving">Omschrijving <span style="text-transform:none;font-weight:400;">(witregel tussen alinea's)</span></label>
+        <textarea class="invoer" rows="6" data-val="true" data-val-required="The Omschrijving field is required." id="Omschrijving" name="Omschrijving">
+Test</textarea>
+        <span class="veldfout field-validation-valid" data-valmsg-for="Omschrijving" data-valmsg-replace="true"></span>
+    </div>
+
+    <div class="beheer-kolommen">
+        <div class="veld">
+            <label for="Uitdaging">Uitdaging</label>
+            <textarea class="invoer" rows="3" style="min-height:5rem;" id="Uitdaging" name="Uitdaging">
+</textarea>
+        </div>
+        <div class="veld">
+            <label for="Geleerd">Wat ik leerde</label>
+            <textarea class="invoer" rows="3" style="min-height:5rem;" id="Geleerd" name="Geleerd">
+</textarea>
+        </div>
+    </div>
+
+    <div class="veld">
+        <label for="IsUitgelicht">Uitgelicht op de startpagina</label>
+        <label style="margin-bottom:0;">
+            <input type="checkbox" style="width:auto; margin-right:0.5rem;" data-val="true" data-val-required="The IsUitgelicht field is required." id="IsUitgelicht" name="IsUitgelicht" value="true" />
+            <span style="font-weight:500; letter-spacing:normal; text-transform:none; color:var(--tekst-sub);">Toon dit project onder "Geselecteerde projecten"</span>
+        </label>
+    </div>
+
+    <div class="veld">
+        <label>Status</label>
+        <div class="status-keuze">
+            <label class="status-kaart">
+                <input type="radio" name="IsGepubliceerd" value="true" checked="checked" data-val="true" data-val-required="The IsGepubliceerd field is required." id="IsGepubliceerd" />
+                <span class="status-kaart-inhoud">
+                    <strong>Gepubliceerd</strong>
+                    <small>Zichtbaar op de publieke site</small>
+                </span>
+            </label>
+            <label class="status-kaart">
+                <input type="radio" name="IsGepubliceerd" value="false" id="IsGepubliceerd" />
+                <span class="status-kaart-inhoud">
+                    <strong>Privé</strong>
+                    <small>Alleen zichtbaar in het beheer</small>
+                </span>
+            </label>
+        </div>
+    </div>
+
+    <div class="veld">
+        <label>Gallerijafbeeldingen</label>
+        <p class="tekst-sub">Upload nieuwe afbeeldingen hieronder. Klik op een afbeelding om die als cover te kiezen — de afbeelding met een gouden rand is de cover en verschijnt op de projectkaarten en de startpagina.</p>
+            <p class="tekst-sub tekst-sm" style="font-style:italic;">Nog geen afbeeldingen — upload er hieronder een paar.</p>
+
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" name="gallerijBestanden" id="gallerijInvoer" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" hidden />
+            <span class="upload-icoon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </span>
+            <strong>Klik hier om afbeeldingen te kiezen</strong>
+            <small class="tekst-sub">JPG, PNG, WebP, GIF of SVG · meerdere tegelijk · elk maximaal 8 MB</small>
+        </div>
+        <div id="nieuweGallerijVoorbeeld" class="uploadgallerij-voorbeeld"></div>
+        <script>
+            (function () {
+                var zone = document.getElementById('uploadZone');
+                var invoer = document.getElementById('gallerijInvoer');
+                var voorbeeld = document.getElementById('nieuweGallerijVoorbeeld');
+                if (!zone || !invoer) return;
+                zone.addEventListener('click', function () { invoer.click(); });
+                zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('sleep-over'); });
+                zone.addEventListener('dragleave', function () { zone.classList.remove('sleep-over'); });
+                zone.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    zone.classList.remove('sleep-over');
+                    if (e.dataTransfer && e.dataTransfer.files.length) {
+                        invoer.files = e.dataTransfer.files;
+                        invoer.dispatchEvent(new Event('change'));
+                    }
+                });
+                invoer.addEventListener('change', function () {
+                    if (!voorbeeld) return;
+                    voorbeeld.innerHTML = '';
+                    for (var i = 0; i < invoer.files.length; i++) {
+                        var f = invoer.files[i];
+                        if (f.type && f.type.indexOf('image/') !== 0) continue;
+                        var img = document.createElement('img');
+                        img.src = URL.createObjectURL(f);
+                        img.alt = f.name;
+                        img.title = f.name;
+                        voorbeeld.appendChild(img);
+                    }
+                    var info = document.createElement('span');
+                    info.className = 'tekst-sm tekst-sub';
+                    info.textContent = invoer.files.length === 1 ? '1 afbeelding gekozen' : invoer.files.length + ' afbeeldingen gekozen';
+                    voorbeeld.appendChild(info);
+                });
+            })();
+        </script>
+        <script>
+            // Markeren welke kaart de cover is, meteen na laden en bij klikken.
+            (function () {
+                function bijwerk() {
+                    document.querySelectorAll('.cover-keuze').forEach(function (kaart) {
+                        var radio = kaart.querySelector('input[name="hoofdCover"]');
+                        kaart.classList.toggle('geselecteerd', !!(radio && radio.checked));
+                    });
+                }
+                document.querySelectorAll('input[name="hoofdCover"]').forEach(function (radio) {
+                    radio.addEventListener('change', bijwerk);
+                });
+                bijwerk();
+            })();
+        </script>
+    </div>
+
+    <div style="display:flex; gap:0.8rem; margin-top:2rem;">
+        <button class="knop knop--primair" type="submit">Opslaan</button>
+        <a class="knop knop--stil" href="/admin/projecten">Annuleren</a>
+    </div>
+<input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjrxXq4vqa0m9Pxc-tSkFf5QiNWjatYQvklaetWGmipPfGfDg1I4HdSOO8VeMWqVWF1kVsGE0QxVwI0hzCbzyPFWrpLySeMm1GKpbeNSF1YthMvG8_JhKDnMD0G0pBU32C5aDYzCO-SHAvX55PBy8Bq1D7-Okg8SFD0BhWieETHJ7w" /><input name="IsUitgelicht" type="hidden" value="false" /></form>
+            <div class="voetschrift-basisregel" style="margin-top:2.5rem;">
+                <span>Beheeromgeving · Schoolportfolio</span>
+                <form method="post" action="/admin/uitloggen" style="display:inline;">
+                    <input name="__RequestVerificationToken" type="hidden" value="CfDJ8Gt_JwUtM7VKqylxD1cazjrxXq4vqa0m9Pxc-tSkFf5QiNWjatYQvklaetWGmipPfGfDg1I4HdSOO8VeMWqVWF1kVsGE0QxVwI0hzCbzyPFWrpLySeMm1GKpbeNSF1YthMvG8_JhKDnMD0G0pBU32C5aDYzCO-SHAvX55PBy8Bq1D7-Okg8SFD0BhWieETHJ7w" />
+                    <button class="knop knop--klein knop--stil" type="submit">Uitloggen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/site.js?v=HM1ZCowF_KnKEniXMvJGSS8kA0zI-HTBLK0hN4hi8hA"></script>
+</body>
+</html>

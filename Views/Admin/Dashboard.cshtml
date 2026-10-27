@@ -1,0 +1,78 @@
+@using SchoolPortfolio.Models
+@model SchoolPortfolio.Controllers.AdminController.DashboardWeergave
+@{
+    Layout = "_LayoutBeheer";
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Beheer</span>
+        <h1>Overzicht</h1>
+    </div>
+    <a class="knop knop--primair" href="/admin/projecten/nieuw">Nieuw project</a>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+
+<div class="projectraster" style="max-width:52rem; margin-bottom:3rem;">
+    <div>
+        <div class="projectkaart-meta">Projecten</div>
+        <h3 style="font-size:1.6rem;">@Model.AantalProjecten</h3>
+        <a class="koppellink" href="/admin/projecten">Beheren <span class="pijl" aria-hidden="true">→</span></a>
+    </div>
+    <div>
+        <div class="projectkaart-meta">Ongelezen berichten</div>
+        <h3 style="font-size:1.6rem;">@Model.AantalOngelezenBerichten</h3>
+        <a class="koppellink" href="/admin/berichten">Bekijken <span class="pijl" aria-hidden="true">→</span></a>
+    </div>
+    <div>
+        <div class="projectkaart-meta">Opleidingen</div>
+        <h3 style="font-size:1.6rem;">@Model.AantalOpleidingen</h3>
+    </div>
+    <div>
+        <div class="projectkaart-meta">Werkervaringen</div>
+        <h3 style="font-size:1.6rem;">@Model.AantalWerkervaringen</h3>
+    </div>
+    <div>
+        <div class="projectkaart-meta">POV-locaties</div>
+        <h3 style="font-size:1.6rem;">@Model.AantalPovLocaties</h3>
+        <a class="koppellink" href="/admin/pov">Beheren <span class="pijl" aria-hidden="true">→</span></a>
+    </div>
+</div>
+
+<div class="sectie-kop">
+    <h2>Laatste berichten</h2>
+    <a class="koppellink" href="/admin/berichten">Alle berichten <span class="pijl" aria-hidden="true">→</span></a>
+</div>
+
+@if (Model.LaatsteBerichten.Count == 0)
+{
+    <p class="tekst-sub">Nog geen contactberichten ontvangen.</p>
+}
+else
+{
+    <table class="beheer-tabel">
+        <thead>
+            <tr><th>Naam</th><th>Onderwerp</th><th>Verstuurd op</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var bericht in Model.LaatsteBerichten)
+            {
+                <tr>
+                    <td class="cel-sterk">
+                        @bericht.Naam
+                        @if (!bericht.IsGelezen)
+                        {
+                            <span class="stempel stempel--accent" style="margin-left:0.4rem;">Nieuw</span>
+                        }
+                    </td>
+                    <td>@bericht.Onderwerp</td>
+                    <td>@bericht.VerstuurdOp.ToString("dd-MM-yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
