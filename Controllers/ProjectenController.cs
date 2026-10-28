@@ -32,6 +32,7 @@ public class ProjectenController(SiteDbContext db) : Controller
         ViewData["Titel"] = "Projecten";
         var projecten = db.Projecten
             .Include(p => p.Afbeeldingen)
+            .Where(p => p.IsGepubliceerd)
             .OrderBy(p => p.Schooljaar)
             .ThenBy(p => p.Vak)
             .ThenBy(p => p.Volgorde)
@@ -67,7 +68,7 @@ public class ProjectenController(SiteDbContext db) : Controller
         ViewBag.FilterVak = vak;
         var query = db.Projecten
             .Include(p => p.Afbeeldingen)
-            .Where(p => p.Schooljaar == jaar);
+            .Where(p => p.IsGepubliceerd && p.Schooljaar == jaar);
         if (vak is not null) query = query.Where(p => p.Vak == vak);
         var projecten = query
             .OrderBy(p => p.Volgorde)
@@ -82,9 +83,11 @@ public class ProjectenController(SiteDbContext db) : Controller
     [Route("projecten/{slug:regex(^(?!3de-jaar$|4de-jaar$|5de-jaar$|6de-jaar$))}")]
     public IActionResult Detail(string slug)
     {
+        // Een project dat in het beheer op “Privé” staat, mag ook via de directe
+        // url niet te lezen zijn.
         var project = db.Projecten
             .Include(p => p.Afbeeldingen)
-            .FirstOrDefault(p => p.Slug == slug);
+            .FirstOrDefault(p => p.IsGepubliceerd && p.Slug == slug);
 
         if (project is null)
         {

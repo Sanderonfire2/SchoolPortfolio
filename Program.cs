@@ -12,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.AddConsole();
 
+// De Kestrel-servernaam niet meesturen: minder informatie voor scanners.
+// (Achter IIS bepaalt de host deze header zelf.)
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddScoped<UploadService>();
@@ -75,12 +79,25 @@ builder.Services
         options.Cookie.Name = "SchoolPortfolio.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        // SameAsRequest: achter de TLS-proxy van de host wordt het schema via
-        // X-Forwarded-Proto doorgegeven (zie UseForwardedHeaders). Zo werkt de
-        // cookie zowel op https als op een kale http-testomgeving zonder dat de
-        // browser hem weigert.
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        // In productie gaat de inlogcookie alleen over https mee, zodat een
+        // onderschepte cookie op een kale http-verbinding waardeloos is. Lokaal
+        // draait de site op http, daarom SameAsRequest in Development.
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
     });
+
+// Antiforgery-cookie: HttpOnly en SameSite Strict. De Secure-vlag volgt het
+// schema (SameAsRequest): ASP.NET Core weigert een token te maken wanneer de
+// SecurePolicy Always is en de aanvraag niet via https binnenkomt, en dan zou
+// elk formulier op een verkeerd geconfigureerde host een 500 geven.
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "SchoolPortfolio.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
 
 builder.Services.AddAuthorization();
 
@@ -90,6 +107,10 @@ builder.Services.AddAuthorization();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Alleen de laatste proxy-hop vertrouwen: de proxy voegt het echte
+    // clientadres achteraan toe, dus een bezoeker kan de snelheidslimiet niet
+    // omzeilen door zelf een X-Forwarded-For mee te sturen.
+    options.ForwardLimit = 1;
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
@@ -145,7 +166,9 @@ app.Use(async (context, volgende) =>
     // site getoond. Andere sites kunnen de pagina nog steeds niet inkaderen.
     headers["X-Frame-Options"] = "SAMEORIGIN";
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+    headers["Cross-Origin-Opener-Policy"] = "same-origin";
+    headers["X-Permitted-Cross-Domain-Policies"] = "none";
     headers["Content-Security-Policy"] =
         "default-src 'self'; " +
         "img-src 'self' data:; " +
@@ -156,7 +179,7 @@ app.Use(async (context, volgende) =>
         "form-action 'self'; " +
         "frame-src 'self'; " +
         "frame-ancestors 'self'; " +
-        "object-src 'self'";
+        "object-src 'none'";
 
     // Geüploade SVG's zijn afbeeldingen, geen documenten: ook na het saneren
     // krijgen ze een sandbox-CSP, zodat een script er nooit kan uitvoeren.

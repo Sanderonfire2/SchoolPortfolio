@@ -4,7 +4,7 @@
 @{
     ViewData["Titel"] = "Over mij";
     var profiel = Db.Profielen.FirstOrDefault();
-    var opleiding = Db.Opleidingen.OrderBy(o => o.Volgorde).FirstOrDefault();
+    var opleiding = Db.Opleidingen.Where(o => o.IsGepubliceerd).OrderBy(o => o.Volgorde).FirstOrDefault();
 }
 
 <section class="pagina">

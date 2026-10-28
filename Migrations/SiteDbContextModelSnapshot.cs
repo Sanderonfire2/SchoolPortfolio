@@ -422,6 +422,9 @@ namespace SchoolPortfolio.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("EindDatum")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Functie")
                         .IsRequired()
                         .HasColumnType("TEXT");

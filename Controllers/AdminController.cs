@@ -17,7 +17,7 @@ namespace SchoolPortfolio.Controllers;
 
 [Authorize]
 [Route("admin")]
-public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads, EmailService email, ILogger<AdminController> logger, EmailGeheimen emailGeheimen) : Controller
+public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads, EmailService email, ILogger<AdminController> logger, EmailGeheimen emailGeheimen, IWebHostEnvironment omgeving) : Controller
 {
     private string? Wachtwoord => LeesWachtwoord(configuratie);
 
@@ -77,8 +77,20 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     [HttpPost("inloggen")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("inloggen")]
+    [RequestSizeLimit(4 * 1024)]
     public async Task<IActionResult> Inloggen(string wachtwoord, string? terug)
     {
+        // In productie krijgt de auth-cookie de Secure-vlag en gaat hij dus nooit
+        // over http mee. Zonder deze melding zou inloggen via http gewoon
+        // "mislukken" zonder dat duidelijk is waarom.
+        if (!omgeving.IsDevelopment() && !Request.IsHttps)
+        {
+            ModelState.AddModelError(string.Empty,
+                "Inloggen kan alleen via een beveiligde https-verbinding. Open deze pagina via https en probeer het opnieuw.");
+            ViewBag.TerugUrl = terug;
+            return View();
+        }
+
         var ingesteld = Wachtwoord;
         if (ingesteld is null)
         {
@@ -712,8 +724,15 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     [HttpPost("stages/opslaan")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(80 * 1024 * 1024)]
-    public async Task<IActionResult> StageOpslaan(Stage formulier, DateOnly? startDatum)
+    public async Task<IActionResult> StageOpslaan(Stage formulier, DateOnly? startDatum, DateOnly? eindDatum)
     {
+        // Een stage loopt van een startdatum tot een einddatum; een einddatum
+        // vóór de start zou de aftelklok onzin laten tonen.
+        if (startDatum is not null && eindDatum is not null && eindDatum.Value < startDatum.Value)
+        {
+            ModelState.AddModelError(string.Empty, "De einddatum moet na de startdatum liggen.");
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Lijst = db.Stages.OrderBy(s => s.Volgorde).Include(s => s.Rapporten).ToList();
@@ -723,7 +742,8 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         if (formulier.Id == 0)
         {
             formulier.Volgorde = db.Stages.Count() + 1;
-            formulier.StartDatum = startDatum is null ? null : startDatum.Value.ToDateTime(TimeOnly.MinValue);
+            formulier.StartDatum = startDatum?.ToDateTime(TimeOnly.MinValue);
+            formulier.EindDatum = eindDatum?.ToDateTime(TimeOnly.MinValue);
             db.Stages.Add(formulier);
         }
         else
@@ -739,7 +759,8 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
             item.Volgorde = formulier.Volgorde;
             item.IsGepubliceerd = formulier.IsGepubliceerd;
             item.Schooljaar = formulier.Schooljaar;
-            item.StartDatum = startDatum is null ? null : startDatum.Value.ToDateTime(TimeOnly.MinValue);
+            item.StartDatum = startDatum?.ToDateTime(TimeOnly.MinValue);
+            item.EindDatum = eindDatum?.ToDateTime(TimeOnly.MinValue);
         }
 
         db.SaveChanges();

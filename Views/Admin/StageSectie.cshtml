@@ -25,7 +25,7 @@
 
 <table class="beheer-tabel">
     <thead>
-        <tr><th>Schooljaar</th><th>Bedrijf</th><th>Periode</th><th>Functie</th><th>Startdatum</th><th>Rapporten</th><th style="text-align:right;">Acties</th></tr>
+        <tr><th>Schooljaar</th><th>Bedrijf</th><th>Periode</th><th>Functie</th><th>Van — tot</th><th>Rapporten</th><th style="text-align:right;">Acties</th></tr>
     </thead>
     <tbody>
         @if (lijst.Count == 0)
@@ -39,7 +39,18 @@
                 <td class="cel-sterk">@item.Bedrijf</td>
                 <td>@item.Periode</td>
                 <td>@item.Functie</td>
-                <td>@(item.StartDatum?.ToString("d-M-yyyy") ?? "—")</td>
+                <td>
+                    @if (item.StartDatum is not null)
+                    {
+                        <span>@item.StartDatum.Value.ToString("d-M-yyyy")</span>
+                        <span class="tekst-zacht">→</span>
+                        <span>@(item.EindDatum?.ToString("d-M-yyyy") ?? "open")</span>
+                    }
+                    else
+                    {
+                        <span class="tekst-zacht">—</span>
+                    }
+                </td>
                 <td>@item.Rapporten.Count</td>
                 <td>
                     <div class="beheer-acties">
@@ -58,8 +69,10 @@
 
 <div class="beheer-formulier">
     <h3>@(isNieuw ? "Nieuwe stage" : "Stage bewerken")</h3>
-    <form method="post" enctype="multipart/form-data" asp-controller="Admin" asp-action="StageOpslaan">                @Html.AntiForgeryToken()
-            <input type="hidden" name="Id" value="@Model.Id" />
+    <form method="post" enctype="multipart/form-data" asp-controller="Admin" asp-action="StageOpslaan">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="veldfout" style="margin-bottom:1rem;"></div>
+        <input type="hidden" name="Id" value="@Model.Id" />
         <div class="beheer-kolommen">
             <div class="veld">
                 <label for="Periode">Periode</label>
@@ -97,10 +110,15 @@
                 <input class="invoer" id="Functie" name="Functie" value="@Model.Functie" />
             </div>
             <div class="veld">
-                <label for="startDatum">Geplande startdatum</label>
+                <label for="startDatum">Startdatum</label>
                 <input class="invoer" type="date" id="startDatum" name="startDatum"
                        value="@Model.StartDatum?.ToString("yyyy-MM-dd")" />
-                <span class="formuliernota">Drijft de aftelbaar op de startpagina. Leeg = geen aftelfunkantie.</span>
+            </div>
+            <div class="veld">
+                <label for="eindDatum">Einddatum</label>
+                <input class="invoer" type="date" id="eindDatum" name="eindDatum"
+                       value="@Model.EindDatum?.ToString("yyyy-MM-dd")" />
+                <span class="formuliernota">De aftelklok op de homepagina en /stage rekent met deze twee datums. Leeg laten = geen aftelklok.</span>
             </div>
         </div>
         <div class="veld">

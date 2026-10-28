@@ -160,6 +160,9 @@ public class HomeController(SiteDbContext db, EmailService email, IWebHostEnviro
     [HttpPost]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("contactformulier")]
+    // Een contactbericht is klein; zo kan niemand met een groot lichaam de
+    // server belasten zonder ooit iets zinvols te sturen.
+    [RequestSizeLimit(64 * 1024)]
     public async Task<IActionResult> Contact(ContactFormulier formulier)
     {
         if (!ModelState.IsValid)

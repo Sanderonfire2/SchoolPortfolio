@@ -21,7 +21,7 @@ namespace SchoolPortfolio.Services;
 ///
 /// Zonder koppeling wordt er niet verstuurd en wordt de oorzaak helder gelogd.
 /// </summary>
-public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailGeheimen emailGeheimen)
+public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailGeheimen emailGeheimen, IWebHostEnvironment omgeving)
 {
     private const string SmtpServer = "smtp-relay.brevo.com";
     private const int SmtpPoort = 587;
@@ -40,7 +40,7 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailG
                 new MailBericht
                 {
                     Aan = bericht.Email,
-                    Onderwerp = $"Bevestiging: je bericht “{bericht.Onderwerp}” is ontvangen",
+                    Onderwerp = $"Bevestiging: je bericht “{KopVeilig(bericht.Onderwerp)}” is ontvangen",
                     Sjabloon = "contact-bevestiging",
                     Velden = new Dictionary<string, string>
                     {
@@ -69,14 +69,15 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailG
                 {
                     Aan = AfzenderAdres(),
                     AntwoordAan = bericht.Email,
-                    Onderwerp = $"Nieuw contactbericht van {bericht.Naam}: “{bericht.Onderwerp}”",
+                    Onderwerp = $"Nieuw contactbericht van {KopVeilig(bericht.Naam, 60)}: “{KopVeilig(bericht.Onderwerp)}”",
                     Sjabloon = "contact-notificatie-beheerder",
                     Velden = new Dictionary<string, string>
                     {
                         ["naam"] = bericht.Naam,
                         ["email"] = bericht.Email,
                         ["onderwerp"] = bericht.Onderwerp,
-                        ["inhoud"] = bericht.Inhoud
+                        ["inhoud"] = bericht.Inhoud,
+                        ["tijd"] = bericht.VerstuurdOp.ToString("dd-MM-yyyy HH:mm")
                     }
                 });
             logger.LogInformation("Notificatie aan beheerder verzonden naar {Adres} na bericht {Id}.", AfzenderAdres(), bericht.Id);
@@ -137,9 +138,26 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailG
             Sjabloon = "testmail",
             Velden = new Dictionary<string, string>
             {
-                ["tijd"] = DateTime.Now.ToString("dd MMMM yyyy HH:mm")
+                ["tijd"] = DateTime.Now.ToString("dd-MM-yyyy HH:mm"),
+                ["afzender"] = naar,
+                ["server"] = $"{SmtpServer}:{SmtpPoort}"
             }
         });
+    }
+
+    /// <summary>
+    /// Maakt een stukje gebruikersinvoer veilig voor een e-mailkop: geen regeleinden
+    /// (kop-injectie) en een redelijke maximumlengte.
+    /// </summary>
+    private static string KopVeilig(string? waarde, int maximum = 120)
+    {
+        if (string.IsNullOrWhiteSpace(waarde)) return string.Empty;
+
+        var schoon = waarde.Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal)
+            .Trim();
+
+        return schoon.Length <= maximum ? schoon : schoon[..maximum].TrimEnd() + "…";
     }
 
     private string AfzenderAdres()
@@ -303,48 +321,46 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailG
             message.ReplyTo.Add(MailboxAddress.Parse(bericht.AntwoordAan));
         }
 
-        var body = SjabloonTekst(bericht.Sjabloon, bericht.Velden);
-        message.Body = new TextPart("plain") { Text = body };
+        // Het logo gaat als inline bijlage mee (Content-ID), zodat de mail geen
+        // externe afbeelding hoeft te laden en er ook geen publieke url nodig is.
+        var logoPad = Path.Combine(omgeving.WebRootPath ?? "wwwroot", "img", "logo-email.png");
+        var logoAanwezig = File.Exists(logoPad);
+
+        var (tekst, html) = EmailTemplate.Bouw(
+            bericht.Sjabloon,
+            bericht.Velden,
+            EmailTemplate.ContextVan(db.Profielen.FirstOrDefault()),
+            logoAanwezig);
+
+        // multipart/alternative met een leesbare tekstversie én een HTML-versie;
+        // de HTML hangt samen met het logo in multipart/related.
+        var alternatief = new MultipartAlternative();
+        alternatief.Add(new TextPart("plain") { Text = tekst });
+
+        var gerelateerd = new MultipartRelated();
+        gerelateerd.Add(new TextPart("html") { Text = html });
+
+        if (logoAanwezig)
+        {
+            gerelateerd.Add(new MimePart("image", "png")
+            {
+                // In het geheugen lezen: de mail wordt pas later verzonden, dus het
+                // bestand mag niet open blijven staan.
+                Content = new MimeContent(new MemoryStream(File.ReadAllBytes(logoPad))),
+                ContentId = EmailTemplate.LogoContentId,
+                ContentDisposition = new ContentDisposition(ContentDisposition.Inline),
+                ContentTransferEncoding = ContentEncoding.Base64,
+                FileName = "logo-sander-van-praet.png"
+            });
+        }
+
+        alternatief.Add(gerelateerd);
+        message.Body = alternatief;
+        message.Date = DateTimeOffset.Now;
 
         return message;
     }
 
-    private static string SjabloonTekst(string sjabloon, Dictionary<string, string> velden)
-    {
-        return sjabloon switch
-        {
-            "contact-bevestiging" => $@"Beste {velden["naam"]},
-
-dankjewel voor je bericht over “{velden["onderwerp"]}”. We hebben je bericht ontvangen en zullen zo spoedig mogelijk reageren.
-
-Met vriendelijke groeten,
-Afdeling Schoolportfolio",
-
-            "contact-notificatie-beheerder" => $@"Nieuw contactbericht van {velden["naam"]} <{velden["email"]}>
-
-Onderwerp: {velden["onderwerp"]}
-
-Bericht:
-{velden["inhoud"]}",
-
-            "testmail" => $@"Dit is een testmail van de beheeromgeving van je schoolportfolio.
-
-Verzonden op: {velden["tijd"]}
-
-Als je dit leest, werkt de koppeling met Brevo: e-mails worden echt verstuurd van je eigen adres.",
-
-            "beheerder-inlogbevestiging" => $@"Inlogbevestiging voor {velden["naam"]}
-
-Je bent ingelogd op de beheeromgeving van de schoolportfolio.
-Tijdstip: {velden["tijd"]}
-
-Laatste actieve bericht:
-Van: {velden["berichtVan"]}
-Onderwerp: {velden["berichtOnderwerp"]}",
-
-            _ => throw new InvalidOperationException($"Onbekend e-mailsjabloon: {sjabloon}")
-        };
-    }
 }
 
 /// <summary>

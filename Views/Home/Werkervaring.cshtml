@@ -3,7 +3,7 @@
 @inject SiteDbContext Db
 @{
     ViewData["Titel"] = "Werkervaring";
-    var werkervaringen = Db.Werkervaringen.OrderBy(w => w.Volgorde).ToList();
+    var werkervaringen = Db.Werkervaringen.Where(w => w.IsGepubliceerd).OrderBy(w => w.Volgorde).ToList();
     var introductie = Db.PaginaInhouden.Find("intro-werkervaring")?.Inhoud;
 }
 

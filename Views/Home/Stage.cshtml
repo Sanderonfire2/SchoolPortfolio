@@ -7,17 +7,21 @@
 @{
     ViewData["Titel"] = "Stage";
     var filterJaar = ViewBag.FilterJaar as string;
-    var stagesQ = Db.Stages.OrderBy(s => s.Volgorde).Include(s => s.Rapporten).AsQueryable();
+    // Alleen gepubliceerde stages horen op de publieke site, ook wanneer er via
+    // een schooljaarfilter wordt gekeken.
+    var stagesQ = Db.Stages
+        .Where(s => s.IsGepubliceerd)
+        .OrderBy(s => s.Volgorde)
+        .Include(s => s.Rapporten)
+        .AsQueryable();
     if (!string.IsNullOrWhiteSpace(filterJaar)) stagesQ = stagesQ.Where(s => s.Schooljaar == filterJaar);
     var stages = stagesQ.ToList();
-    var eersteStage = stages.FirstOrDefault();
     var introductie = Db.PaginaInhouden.Find("intro-stage")?.Inhoud;
 
-    // Aftelbaar: werkt alléén met een toekomstige startdatum in de database.
-    // Geen hardcoded datum; rescheduling werkt via de beheerpagina.
-    var dagen = eersteStage?.StartDatum is DateTime start ? (start.Date - DateTime.Today).Days : (int?)null;
-    var toonAftelbaar = dagen is int d && d > 0 && !string.IsNullOrWhiteSpace(filterJaar);
-    var isGestart = dagen is int d2 && d2 <= 0 && eersteStage?.StartDatum is not null && !string.IsNullOrWhiteSpace(filterJaar);
+    // De klok hangt aan de stage die vandaag relevant is (loopt, komt eraan of
+    // is net afgelopen) en werkt met de start- én einddatum uit het beheer.
+    var actieveStage = StageTijdlijn.KiesActieveStage(stages);
+    var tijdlijn = StageTijdlijn.Van(actieveStage?.StartDatum, actieveStage?.EindDatum);
 }
 
 <section class="pagina">
@@ -39,22 +43,9 @@
         {
             <p class="hero-intro">@introductie</p>
         }
-        @if (toonAftelbaar)
+        @if (tijdlijn.HeeftDatums)
         {
-            var resterendeDagen = dagen!.Value;
-            <div class="aftelklok" role="status" data-aftelklok data-startdatum="@eersteStage!.StartDatum!.Value.ToString("yyyy-MM-dd")">
-                <span class="aftelklok-getal" data-aftelklok-getal>@resterendeDagen</span>
-                <span class="aftelklok-tekst">
-                    <span data-aftelklok-tekst>@(resterendeDagen == 1 ? "dag" : "dagen") tot de start van mijn stage</span>
-                    <span class="tekst-sub">@(eersteStage.StartDatum!.Value.ToString("d MMMM yyyy"))</span>
-                </span>
-            </div>
-        }
-        else if (isGestart)
-        {
-            <div class="aftelklok aftelklok--gestart" role="status">
-                <span class="aftelklok-tekst">De stage is gestart — de dagrapporten verschijnen hieronder.</span>
-            </div>
+            <partial name="_StageStatus" model="tijdlijn" />
         }
     </div>
 </section>
@@ -78,7 +69,14 @@
                     <div><dt>Functie</dt><dd>@stage.Functie</dd></div>
                 </dl>
                 <dl class="feitelijst">
-                    <div><dt>Periode</dt><dd>@stage.Periode</dd></div>
+                    <div>
+                        <dt>Periode</dt>
+                        <dd>
+                            @(stage.StartDatum is not null
+                                ? StageTijdlijn.Van(stage.StartDatum, stage.EindDatum).PeriodeTekst
+                                : stage.Periode)
+                        </dd>
+                    </div>
                     <div><dt>Locatie</dt><dd>@(stage.Locatie ?? "—")</dd></div>
                 </dl>
             </div>

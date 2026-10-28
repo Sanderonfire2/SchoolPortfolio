@@ -84,32 +84,82 @@
         dialoogImg.removeAttribute("src");
     });
 
-    /* ---------- Aftelklok (stage) — ververst automatisch bij datumwissel ---------- */
+    /* ---------- Stageklok — telt af, toont de voortgang of sluit af ---------- */
 
-    var aftelklok = document.querySelector("[data-aftelklok]");
+    var stageklokken = document.querySelectorAll("[data-stageklok]");
 
-    function bijwerkAftelklok() {
-        if (!aftelklok) return;
-        var startdatum = aftelklok.getAttribute("data-startdatum");
-        if (!startdatum) return;
-        var start = new Date(startdatum + "T00:00:00");
-        var vandaag = new Date();
-        vandaag.setHours(0, 0, 0, 0);
-        var dagen = Math.round((start - vandaag) / 86400000);
-        var getalElement = aftelklok.querySelector("[data-aftelklok-getal]");
-        var tekstElement = aftelklok.querySelector("[data-aftelklok-tekst]");
-        if (dagen > 0) {
-            if (getalElement) getalElement.textContent = String(dagen);
-            if (tekstElement) tekstElement.firstChild.nodeValue = (dagen === 1 ? "dag" : "dagen") + " tot de start van mijn stage";
-        } else {
-            // Stage gestart of gestart geweest — klok verbergen.
-            aftelklok.style.display = "none";
-        }
+    function dagVan(waarde) {
+        if (!waarde) return null;
+        var delen = waarde.split("-");
+        if (delen.length !== 3) return null;
+        var datum = new Date(Number(delen[0]), Number(delen[1]) - 1, Number(delen[2]));
+        datum.setHours(0, 0, 0, 0);
+        return isNaN(datum.getTime()) ? null : datum;
     }
 
-    if (aftelklok) {
-        bijwerkAftelklok();
-        setInterval(bijwerkAftelklok, 60000); // dagovergang automatisch vangen
+    function dagenTussen(vanaf, tot) {
+        return Math.round((tot - vanaf) / 86400000);
+    }
+
+    function bijwerkStageklok(klok) {
+        var start = dagVan(klok.getAttribute("data-start"));
+        var eind = dagVan(klok.getAttribute("data-eind"));
+        if (!start && !eind) return;
+
+        var vandaag = new Date();
+        vandaag.setHours(0, 0, 0, 0);
+        if (start && eind && eind < start) eind = null;
+
+        var fase, getal, eenheid, tekst, voortgang = 0;
+
+        if (start && vandaag < start) {
+            fase = "gepland";
+            getal = dagenTussen(vandaag, start);
+            eenheid = getal === 1 ? "dag" : "dagen";
+            tekst = "tot de start van mijn stage";
+        } else if (eind && vandaag > eind) {
+            fase = "afgerond";
+            getal = start ? dagenTussen(start, eind) + 1 : 0;
+            eenheid = getal === 1 ? "dag" : "dagen";
+            tekst = "stage afgerond";
+            voortgang = 1;
+        } else {
+            fase = "bezig";
+            getal = start ? dagenTussen(start, vandaag) + 1 : 0;
+            var totaal = start && eind ? dagenTussen(start, eind) + 1 : 0;
+            eenheid = totaal > 0 ? "van " + totaal : (getal === 1 ? "dag" : "dagen");
+            tekst = totaal > 0 ? "stage dag" : "sinds de start van mijn stage";
+            voortgang = totaal > 0 ? Math.max(0, Math.min(1, getal / totaal)) : 0;
+        }
+
+        var labels = { gepland: "Aftellen", bezig: "Stage loopt", afgerond: "Afgerond" };
+        var labelElement = klok.querySelector("[data-stage-label]");
+        var getalElement = klok.querySelector("[data-stage-getal]");
+        var eenheidElement = klok.querySelector("[data-stage-eenheid]");
+        var tekstElement = klok.querySelector("[data-stage-tekst]");
+        var balk = klok.querySelector("[data-stage-balk]");
+        var vulling = klok.querySelector("[data-stage-vulling]");
+        var procent = Math.round(voortgang * 100);
+
+        if (labelElement) labelElement.textContent = labels[fase];
+        if (getalElement) getalElement.textContent = String(getal);
+        if (eenheidElement) eenheidElement.textContent = eenheid;
+        if (tekstElement) tekstElement.textContent = tekst;
+
+        klok.classList.remove("stageklok--gepland", "stageklok--bezig", "stageklok--afgerond");
+        klok.classList.add("stageklok--" + fase);
+
+        if (balk) balk.hidden = fase === "gepland" || procent === 0;
+        if (vulling) vulling.style.width = procent + "%";
+        if (balk) balk.setAttribute("aria-label", procent + "% van de stageperiode voltooid");
+    }
+
+    if (stageklokken.length > 0) {
+        var werkStageklokkenBij = function () {
+            Array.prototype.forEach.call(stageklokken, bijwerkStageklok);
+        };
+        werkStageklokkenBij();
+        setInterval(werkStageklokkenBij, 60000); // dagovergang automatisch vangen
     }
 
     /* ---------- Uploadvoorbeeldweergave ---------- */

@@ -87,8 +87,11 @@ public class Stage
     /// <summary>Verwijzing naar een oud incidenteel stageverslag; nieuwe verslagen worden Rapport-records.</summary>
     public string? VerslagPad { get; set; }
 
-    /// <summary>Geplande startdatum van de stage; drijft de aftelfunktionaliteit op de startpagina.</summary>
+    /// <summary>Geplande startdatum van de stage; drijft de aftelklok op de homepagina en /stage.</summary>
     public DateTime? StartDatum { get; set; }
+
+    /// <summary>Geplande einddatum van de stage; samen met de startdatum bepaalt die de voortgang.</summary>
+    public DateTime? EindDatum { get; set; }
 
     /// <summary>Schooljaar binnen de stageperiode ("5de jaar" of "6de jaar").</summary>
     public string? Schooljaar { get; set; }
@@ -209,11 +212,18 @@ public class ContactBericht
 public class ContactFormulier
 {
     [Required(ErrorMessage = "Vul je naam in.")]
+    [StringLength(100, ErrorMessage = "Gebruik maximaal 100 tekens voor je naam.")]
     public string Naam { get; set; } = "";
+
     [Required(ErrorMessage = "Vul je e-mailadres in.")]
     [EmailAddress(ErrorMessage = "Dit is geen geldig e-mailadres.")]
+    [StringLength(150, ErrorMessage = "Gebruik maximaal 150 tekens voor je e-mailadres.")]
     public string Email { get; set; } = "";
+
+    [StringLength(150, ErrorMessage = "Gebruik maximaal 150 tekens voor het onderwerp.")]
     public string Onderwerp { get; set; } = "";
+
     [Required(ErrorMessage = "Vul je bericht in.")]
+    [StringLength(4000, ErrorMessage = "Gebruik maximaal 4000 tekens voor je bericht.")]
     public string Inhoud { get; set; } = "";
 }

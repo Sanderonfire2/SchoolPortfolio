@@ -1,0 +1,63 @@
+@using SchoolPortfolio.Services
+@model StageTijdlijn
+@{
+    var fase = Model.Fase;
+    var label = fase switch
+    {
+        StageFase.Gepland => "Aftellen",
+        StageFase.Bezig => "Stage loopt",
+        StageFase.Afgerond => "Afgerond",
+        _ => ""
+    };
+
+    var getal = fase switch
+    {
+        StageFase.Gepland => Model.DagenTotStart,
+        StageFase.Bezig => Model.DagNummer,
+        StageFase.Afgerond => Model.TotaalDagen,
+        _ => 0
+    };
+
+    var eenheid = fase switch
+    {
+        StageFase.Gepland => Model.DagenTotStart == 1 ? "dag" : "dagen",
+        StageFase.Bezig => Model.TotaalDagen > 0 ? $"van {Model.TotaalDagen}" : (Model.DagNummer == 1 ? "dag" : "dagen"),
+        StageFase.Afgerond => Model.TotaalDagen == 1 ? "dag" : "dagen",
+        _ => ""
+    };
+
+    var tekst = fase switch
+    {
+        StageFase.Gepland => "tot de start van mijn stage",
+        StageFase.Bezig => Model.TotaalDagen > 0 ? "stage dag" : "sinds de start van mijn stage",
+        StageFase.Afgerond => "stage afgerond",
+        _ => ""
+    };
+}
+@if (Model.HeeftDatums)
+{
+    <div class="stageklok stageklok--@fase.ToString().ToLowerInvariant()" role="status"
+         data-stageklok
+         data-start="@Model.Start?.ToString("yyyy-MM-dd")"
+         data-eind="@Model.Eind?.ToString("yyyy-MM-dd")">
+        <div class="stageklok-kop">
+            <span class="stageklok-label" data-stage-label>@label</span>
+            @if (!string.IsNullOrEmpty(Model.PeriodeTekst))
+            {
+                <span class="stageklok-periode" data-stage-periode>@Model.PeriodeTekst</span>
+            }
+        </div>
+        <div class="stageklok-getalrij">
+            <span class="stageklok-getal" data-stage-getal>@getal</span>
+            <span class="stageklok-eenheid" data-stage-eenheid>@eenheid</span>
+        </div>
+        <p class="stageklok-tekst" data-stage-tekst>@tekst</p>
+        @{
+            var procent = Model.HeeftVoortgang ? (int)Math.Round(Model.Voortgang * 100) : 0;
+        }
+        <div class="stageklok-balk" data-stage-balk role="img" hidden="@(Model.HeeftVoortgang ? null : "hidden")"
+             aria-label="@($"{procent}% van de stageperiode voltooid")">
+            <span data-stage-vulling style="width:@(procent)%;"></span>
+        </div>
+    </div>
+}

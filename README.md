@@ -55,6 +55,22 @@ De database herstelt zichzelf bij het starten. Ontbrekende tabellen en kolommen 
 van een oudere database niet meer klopt. Herstart de app na een deploy; daarna werkt `/admin`
 weer. In de log verschijnt dan één regel met de kolommen die zijn toegevoegd.
 
+## Stageperiode en aftelklok
+
+Een stage heeft naast de vrije tekst `Periode` ook een **startdatum** en **einddatum**
+(`/admin/stages`). Die twee datums sturen de klok op de homepagina en op `/stage`:
+
+| Moment | Wat de site toont |
+|---|---|
+| Vóór de startdatum | grote teller met het aantal dagen tot de start |
+| Tussen start en eind | “stage dag X van Y” met een voortgangsbalk |
+| Na de einddatum | “stage afgerond” met de volledige duur |
+
+Laat je beide datums leeg, dan verschijnt er geen klok. De klok kiest automatisch de stage die
+vandaag relevant is (eerst een lopende, dan de eerstvolgende, anders de laatst afgeronde) en
+werkt alleen met **gepubliceerde** stages. Het javascript ververst de getallen elke minuut,
+zodat een pagina die lang openstaat ook na middernacht klopt.
+
 ## E-mail: echt versturen via Brevo vanaf je eigen adres
 
 Mails gaan via de gratis SMTP-relay van [Brevo](https://www.brevo.com/) (300 mails per dag, geen
@@ -79,6 +95,13 @@ schrijfbare `App_Data` kun je in plaats daarvan de omgevingsvariabelen `Email__A
 
 De host moet uitgaande verbindingen op poort 587 (STARTTLS) naar `smtp-relay.brevo.com` toelaten.
 
+Elke mail wordt als **multipart/alternative** verstuurd: een leesbare tekstversie én een
+HTML-versie in de huisstijl (donkere kop, goud accent, logo). Het logo gaat als inline bijlage
+met een Content-ID mee (`wwwroot/img/logo-email.png`), dus er is geen externe afbeelding of
+publieke url nodig. Alle waarden uit het contactformulier worden vóór het opmaken geëscaleerd,
+zodat een bezoeker geen HTML of links in de inbox van de beheerder kan injecteren. De sjablonen
+staan in `Services/EmailTemplate.cs`.
+
 ## AREI-pdf's
 
 De drie AREI-boeken staan in `wwwroot/downloaden/arei` en worden via `/arei/{slug}/pdf` geserveerd
@@ -100,6 +123,14 @@ in de database naar een andere host zou wijzen. Een vervangen pdf via **/admin/a
 ## Beveiliging
 
 - Cookie-authenticatie met HttpOnly-, Secure- en SameSite-vlaggen; de auth-cookie is 8 uur geldig.
+  In productie krijgen de auth- en antiforgery-cookie altijd de `Secure`-vlag (alleen over https);
+  alleen in Development mag dat meebewegen met het schema, zodat lokaal inloggen op http blijft werken.
+- Alleen **gepubliceerde** inhoud is openbaar: projecten (ook via hun directe url), stages,
+  POV-locaties, opleidingen, werkervaringen, FAQ-items en downloads filteren op `IsGepubliceerd`.
+- `ForwardLimit = 1` op de forwarded headers: alleen de laatste proxy-hop wordt vertrouwd, zodat
+  een bezoeker de IP-snelheidslimiet niet kan omzeilen met een zelfgemaakte `X-Forwarded-For`.
+- Kleine body-limieten op het contactformulier (64 kB) en het inlogformulier (4 kB).
+- Geen `Server`-header van Kestrel en `object-src 'none'` in de CSP.
 - Data Protection-sleutels staan in `App_Data/dp-keys`, zodat antiforgery-tokens en de auth-cookie
   een herstart en een deploy naar een andere map overleven.
 - Het inlogformulier heeft een snelheidslimiet: maximaal 5 pogingen per 15 minuten per IP-adres.

@@ -1,15 +1,21 @@
 @using Microsoft.EntityFrameworkCore
 @using SchoolPortfolio.Data
 @using SchoolPortfolio.Models
+@using SchoolPortfolio.Services
 @inject SiteDbContext Db
 @{
     var profiel = Db.Profielen.FirstOrDefault();
     var projecten = Db.Projecten
         .Include(p => p.Afbeeldingen)
-        .Where(p => p.IsUitgelicht)
+        .Where(p => p.IsUitgelicht && p.IsGepubliceerd)
         .OrderBy(p => p.Volgorde)
         .ToList();
-    var stappen = Db.Opleidingen.OrderBy(o => o.Volgorde).ToList();
+    var stappen = Db.Opleidingen.Where(o => o.IsGepubliceerd).OrderBy(o => o.Volgorde).ToList();
+    // De aftelklok hoort ook op de homepagina: de stage die vandaag relevant is
+    // bepaalt of er wordt afgeteld, hoe ver de stage is of dat ze afgerond is.
+    var stage = StageTijdlijn.KiesActieveStage(
+        Db.Stages.Where(s => s.IsGepubliceerd).OrderBy(s => s.Volgorde).ToList());
+    var tijdlijn = StageTijdlijn.Van(stage?.StartDatum, stage?.EindDatum);
     ViewData["Titel"] = "";
 }
 
@@ -19,10 +25,14 @@
         <h1 class="hero-titel">@(profiel?.VolledigeNaam ?? "Sander Van Praet")</h1>
         <p class="hero-intro">@(profiel?.KorteIntroductie)</p>
         <div class="hero-kenmerken">
-            <span><strong>@(Db.Opleidingen.OrderBy(o => o.Volgorde).FirstOrDefault()?.Titel.Split('—')[0].Trim() ?? "Graduaat Programmeren")</strong></span>
+            <span><strong>@(Db.Opleidingen.Where(o => o.IsGepubliceerd).OrderBy(o => o.Volgorde).FirstOrDefault()?.Titel.Split('—')[0].Trim() ?? "Graduaat Programmeren")</strong></span>
             <span>@(profiel?.Woonplaats)</span>
             <span>Open voor stage en startbaan</span>
         </div>
+        @if (tijdlijn.HeeftDatums)
+        {
+            <partial name="_StageStatus" model="tijdlijn" />
+        }
         <div class="hero-acties">
             <a class="knop knop--primair" href="/projecten">Bekijk mijn projecten <span aria-hidden="true">→</span></a>
             <a class="knop" href="/over-mij">Over mij</a>

@@ -3,7 +3,7 @@
 @inject SiteDbContext Db
 @{
     ViewData["Titel"] = "Schoolcarrière";
-    var opleidingen = Db.Opleidingen.OrderBy(o => o.Volgorde).ToList();
+    var opleidingen = Db.Opleidingen.Where(o => o.IsGepubliceerd).OrderBy(o => o.Volgorde).ToList();
     var introductie = Db.PaginaInhouden.Find("intro-schoolcarriere")?.Inhoud;
 }
 
