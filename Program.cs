@@ -1,5 +1,8 @@
+using System.IO;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortfolio.Data;
@@ -11,12 +14,63 @@ builder.Logging.AddConsole();
 
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddHttpClient();
-
 builder.Services.AddScoped<UploadService>();
+builder.Services.AddScoped<EmailService>();
 
-builder.Services.AddDbContext<SiteDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+// De SQLite-verbinding staat in appsettings.json als "Data Source=app.db".
+// Onder IIS (gedeelde hosting) is de werkmap niet de site-map, waardoor een
+// relatieve verbinding naar een onbeschrijfbare map zou wijzen. Daarom maken we
+// het pad absoluut ten opzichte van de content-root.
+var verbinding = builder.Configuration.GetConnectionString("Default") ?? "Data Source=app.db";
+if (verbinding.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+{
+    var ruwPad = verbinding["Data Source=".Length..].Trim();
+    if (!string.IsNullOrWhiteSpace(ruwPad) && !Path.IsPathRooted(ruwPad))
+    {
+        var absoluutPad = Path.Combine(builder.Environment.ContentRootPath, ruwPad);
+        verbinding = $"Data Source={absoluutPad}";
+    }
+}
+builder.Services.AddDbContext<SiteDbContext>(options => options.UseSqlite(verbinding));
+
+builder.Services.AddSingleton<GmailGeheimen>();
+
+// Sleutelring voor Data Protection (antiforgery + versleutelde Gmail-geheimen).
+// Deze moet op een beschrijfbare én blijvende plaats staan: anders verandert de
+// sleutel na elke herstart en faalt elk antiforgery-token (elke login-POST).
+// De vaste applicatienaam zorgt ervoor dat de sleutels ook na een deploy naar een
+// andere fysieke map gevonden worden.
+var sleutelMap = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "dp-keys");
+var sleutelOpslagGelukt = true;
+try
+{
+    Directory.CreateDirectory(sleutelMap);
+}
+catch (Exception ex)
+{
+    sleutelOpslagGelukt = false;
+    Console.Error.WriteLine(
+        $"WAARSCHUWING: de map voor Data Protection-sleutels ({sleutelMap}) is niet beschrijfbaar: {ex.Message}");
+}
+
+if (sleutelOpslagGelukt)
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(sleutelMap))
+        .SetApplicationName("SchoolPortfolio");
+}
+else
+{
+    // Terugvallen op de standaardopslag van de host, zodat de site toch start.
+    builder.Services.AddDataProtection().SetApplicationName("SchoolPortfolio");
+}
+
+builder.Services.AddSingleton(sp =>
+{
+    var provider = sp.GetRequiredService<IDataProtectionProvider>();
+    var protector = provider.CreateProtector("GmailGeheimen");
+    return protector;
+});
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -28,13 +82,24 @@ builder.Services
         options.Cookie.Name = "SchoolPortfolio.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        // In productie altijd het beveiligde vlaggetje, ook achter een TLS-proxy.
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
+        // SameAsRequest: achter de TLS-proxy van de host wordt het schema via
+        // X-Forwarded-Proto doorgegeven (zie UseForwardedHeaders). Zo werkt de
+        // cookie zowel op https als op een kale http-testomgeving zonder dat de
+        // browser hem weigert.
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
 builder.Services.AddAuthorization();
+
+// De host (IIS/Plesk) termineert TLS en geeft het oorspronkelijke schema door in
+// X-Forwarded-Proto. Zonder deze middleware denkt de app dat elke aanvraag http is
+// (verkeerde redirects en cookies) en ziet hij het echte client-IP niet.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Snelheidslimiet tegen brute-force inlogpogingen en misbruik van het contactformulier.
 // Vaste vensters per IP-adres.
@@ -66,18 +131,26 @@ using (var scope = app.Services.CreateScope())
     DataInitializer.Initialiseer(scope.ServiceProvider);
 }
 
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/fout");
     app.UseHsts();
 }
 
+// Vriendelijke pagina voor 400/404/429 in plaats van de kale foutpagina van de
+// host. De foutcode wordt doorgegeven aan /fout.
+app.UseStatusCodePagesWithReExecute("/fout", "?code={0}");
+
 // Veiligheidsheaders op elke reactie.
 app.Use(async (context, volgende) =>
 {
     var headers = context.Response.Headers;
     headers["X-Content-Type-Options"] = "nosniff";
-    headers["X-Frame-Options"] = "DENY";
+    // SAMEORIGIN in plaats van DENY: de AREI-pdf's worden in een iframe op de eigen
+    // site getoond. Andere sites kunnen de pagina nog steeds niet inkaderen.
+    headers["X-Frame-Options"] = "SAMEORIGIN";
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
     headers["Content-Security-Policy"] =
@@ -88,8 +161,9 @@ app.Use(async (context, volgende) =>
         "script-src 'self' 'unsafe-inline'; " +
         "base-uri 'self'; " +
         "form-action 'self'; " +
-        "frame-ancestors 'none'; " +
-        "object-src 'none'";
+        "frame-src 'self'; " +
+        "frame-ancestors 'self'; " +
+        "object-src 'self'";
     await volgende();
 });
 

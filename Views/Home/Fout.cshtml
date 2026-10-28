@@ -1,0 +1,32 @@
+@{
+    var code = ViewData["Foutcode"] as int? ?? 500;
+    var melding = code switch
+    {
+        400 => "De aanvraag kon niet worden gecontroleerd. Dat gebeurt bijvoorbeeld wanneer een formulier te lang openstond of je beveiligingstoken verlopen is.",
+        401 or 403 => "Je hebt geen toegang tot deze pagina.",
+        404 => "Deze pagina bestaat niet (meer).",
+        429 => "Je hebt te veel pogingen gedaan. Wacht even en probeer het daarna opnieuw.",
+        _ => "Er ging iets mis bij het verwerken van je aanvraag."
+    };
+    var uitleg = code switch
+    {
+        400 => "Herlaad de pagina en probeer het opnieuw. Kom je van het inlogscherm, ga dan terug naar het inlogscherm en log opnieuw in.",
+        429 => "De site beperkt het aantal inlogpogingen en formulierinzendingen per IP-adres.",
+        _ => "Probeer het later opnieuw. Blijft de fout terugkomen, neem dan contact op via het contactformulier."
+    };
+}
+
+<section class="pagina">
+    <div class="container">
+        <span class="over-label">Fout @code</span>
+        <h1 class="hero-titel" style="font-size:clamp(2rem,5vw,3rem);">Er ging iets mis</h1>
+        <p class="hero-intro">@melding</p>
+        <p class="tekst-sub">@uitleg</p>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1.5rem;">
+            <a class="knop knop--primair" href="/">Naar de homepagina</a>
+            <a class="knop knop--stil" href="/admin/inloggen">Naar inloggen</a>
+            <a class="knop knop--stil" href="/contact">Contact opnemen</a>
+        </div>
+    </div>
+</section>

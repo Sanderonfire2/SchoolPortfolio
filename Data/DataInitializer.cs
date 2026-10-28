@@ -52,7 +52,17 @@ public static class DataInitializer
 
         try
         {
+            // Migrate() kan falen op databases waar EnsureCreated al-tabellen
+            // heeft aangemaakt die ook in een latere migratie voorkomen.
+            // We laten het trachten, en als het faalt door een 'reeds bestaat'-fout,
+            // dan gaan we ervan uit dat de tabellen al correct zijn.
             db.Database.Migrate();
+        }
+        catch (Exception ex) when (IsReedsBestaandFout(ex))
+        {
+            Log(services, LogLevel.Warning, ex,
+                "Migrate() is gefaald omdat een tabel/content al bestaat — " +
+                "dat is OK als de tabel al correct is (EnsureCreated of handmatig).");
         }
         catch (Exception ex)
         {
@@ -87,27 +97,43 @@ public static class DataInitializer
     private static void VulMigratiegeschiedenisAan(SiteDbContext db)
     {
         var connectie = (Microsoft.Data.Sqlite.SqliteConnection)db.Database.GetDbConnection();
-        using var opdracht = connectie.CreateCommand();
-
-        opdracht.CommandText =
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory'";
-        var bestaatAl = Convert.ToInt64(opdracht.ExecuteScalar()) > 0;
-        if (!bestaatAl)
+        var wasOpen = connectie.State == System.Data.ConnectionState.Open;
+        if (!wasOpen)
         {
-            opdracht.CommandText =
-                """CREATE TABLE "__EFMigrationsHistory" ("MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY, "ProductVersion" TEXT NOT NULL);""";
-            opdracht.ExecuteNonQuery();
+            connectie.Open();
+        }
+
+        try
+        {
+            using var opdracht = connectie.CreateCommand();
 
             opdracht.CommandText =
-                """INSERT OR IGNORE INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") VALUES (@nr, @v);""";
-            var nr = opdracht.Parameters.Add("@nr", Microsoft.Data.Sqlite.SqliteType.Text);
-            var v = opdracht.Parameters.Add("@v", Microsoft.Data.Sqlite.SqliteType.Text);
-            var versie = typeof(SiteDbContext).Assembly.GetName().Version!.ToString(3);
-            foreach (var migratie in db.Database.GetMigrations())
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory'";
+            var bestaatAl = Convert.ToInt64(opdracht.ExecuteScalar()) > 0;
+            if (!bestaatAl)
             {
-                nr.Value = migratie;
-                v.Value = versie;
+                opdracht.CommandText =
+                    """CREATE TABLE "__EFMigrationsHistory" ("MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY, "ProductVersion" TEXT NOT NULL);""";
                 opdracht.ExecuteNonQuery();
+
+                opdracht.CommandText =
+                    """INSERT OR IGNORE INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") VALUES (@nr, @v);""";
+                var nr = opdracht.Parameters.Add("@nr", Microsoft.Data.Sqlite.SqliteType.Text);
+                var v = opdracht.Parameters.Add("@v", Microsoft.Data.Sqlite.SqliteType.Text);
+                var versie = typeof(SiteDbContext).Assembly.GetName().Version!.ToString(3);
+                foreach (var migratie in db.Database.GetMigrations())
+                {
+                    nr.Value = migratie;
+                    v.Value = versie;
+                    opdracht.ExecuteNonQuery();
+                }
+            }
+        }
+        finally
+        {
+            if (!wasOpen && connectie.State == System.Data.ConnectionState.Open)
+            {
+                connectie.Close();
             }
         }
     }
@@ -439,6 +465,16 @@ public static class DataInitializer
 
         // Fase 2 opslaan: galerij + rapporten (alleen nieuwe rijen).
         db.SaveChanges();
+    }
+
+    private static bool IsReedsBestaandFout(Exception ex)
+    {
+        if (ex is Microsoft.Data.Sqlite.SqliteException sq && sq.SqliteErrorCode == 1)
+        {
+            return sq.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
+                   sq.Message.Contains("has no column named", StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
     }
 
     private static DateTime ParseDatum(string? v)

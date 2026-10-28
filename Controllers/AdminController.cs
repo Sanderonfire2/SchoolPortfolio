@@ -16,20 +16,27 @@ namespace SchoolPortfolio.Controllers;
 
 [Authorize]
 [Route("admin")]
-public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads) : Controller
+public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads, EmailService email, ILogger<AdminController> logger, GmailGeheimen gmailGeheimen) : Controller
 {
-    private string Wachtwoord => LeesWachtwoord(configuratie);
+    private string? Wachtwoord => LeesWachtwoord(configuratie);
 
-    private static string LeesWachtwoord(IConfiguration configuratie)
+    /// <summary>
+    /// Leest het beheerderswachtwoord uit de omgeving of de configuratie.
+    /// Geeft null terug als er niets ingesteld is: de login toont dan een duidelijke
+    /// melding in plaats van een uitzondering (vroeger gaf dit op de productieserver
+    /// bij elk wachtwoord een foutpagina).
+    /// </summary>
+    private static string? LeesWachtwoord(IConfiguration configuratie)
     {
-        var wachtwoord = configuratie["Beheer:Wachtwoord"];
-        if (string.IsNullOrWhiteSpace(wachtwoord))
+        // Prioriteit: 1) expliciete omgevingsvariabele, 2) appsettings.
+        var viaEnv = configuratie["Beheer__Wachtwoord"];
+        if (!string.IsNullOrWhiteSpace(viaEnv))
         {
-            throw new InvalidOperationException(
-                "Het beheerderswachtwoord is niet ingesteld. Zet de omgevingsvariabele Beheer__Wachtwoord " +
-                "(productie) of Beheer:Wachtwoord in appsettings.Development.json (lokale ontwikkeling).");
+            return viaEnv.Trim();
         }
-        return wachtwoord;
+
+        var viaConfig = configuratie["Beheer:Wachtwoord"];
+        return string.IsNullOrWhiteSpace(viaConfig) ? null : viaConfig.Trim();
     }
 
     /// <summary>
@@ -38,6 +45,12 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     /// </summary>
     private static bool KomtOvereen(string ingevoerd, string opgeslagen)
     {
+        // Leeg ingevoerd wachtwoord is nooit geldig.
+        if (string.IsNullOrWhiteSpace(ingevoerd))
+        {
+            return false;
+        }
+
         var hashIngevoerd = SHA256.HashData(Encoding.UTF8.GetBytes(ingevoerd));
         var hashOpgeslagen = SHA256.HashData(Encoding.UTF8.GetBytes(opgeslagen));
         return CryptographicOperations.FixedTimeEquals(hashIngevoerd, hashOpgeslagen);
@@ -55,6 +68,7 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         }
         ViewData["Titel"] = "Beheer · inloggen";
         ViewBag.TerugUrl = terug;
+        ViewBag.WachtwoordNietIngesteld = Wachtwoord is null;
         return View();
     }
 
@@ -64,7 +78,20 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     [EnableRateLimiting("inloggen")]
     public async Task<IActionResult> Inloggen(string wachtwoord, string? terug)
     {
-        if (string.IsNullOrWhiteSpace(wachtwoord) || !KomtOvereen(wachtwoord, Wachtwoord))
+        var ingesteld = Wachtwoord;
+        if (ingesteld is null)
+        {
+            logger.LogError("Er is geen beheerderswachtwoord geconfigureerd; inloggen is geblokkeerd. " +
+                "Stel de omgevingsvariabele Beheer__Wachtwoord in (of Beheer:Wachtwoord in appsettings) en herstart de site.");
+            ModelState.AddModelError(string.Empty,
+                "Op deze server is nog geen beheerderswachtwoord ingesteld. Stel de omgevingsvariabele " +
+                "Beheer__Wachtwoord in (of Beheer:Wachtwoord in appsettings.json) en herstart de site.");
+            ViewBag.TerugUrl = terug;
+            ViewBag.WachtwoordNietIngesteld = true;
+            return View();
+        }
+
+        if (string.IsNullOrWhiteSpace(wachtwoord) || !KomtOvereen(wachtwoord, ingesteld))
         {
             ModelState.AddModelError(string.Empty, "Onjuist wachtwoord. Probeer opnieuw.");
             ViewBag.TerugUrl = terug;
@@ -121,6 +148,160 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         var berichten = db.ContactBerichten.OrderByDescending(b => b.VerstuurdOp).ToList();
         return View(berichten);
     }
+
+    /* ---------- E-mail ---------- */
+
+    [HttpGet("email")]
+    public IActionResult Email()
+    {
+        ViewData["Titel"] = "E-mail";
+        var profiel = db.Profielen.FirstOrDefault();
+        var adres = profiel?.Email?.Trim();
+        var voorstelling = profiel?.VolledigeNaam?.Trim() ?? "Sander Van Praet";
+
+        var (gmailAdres, _) = gmailGeheimen.Lezen();
+
+        return View(new EmailWeergave
+        {
+            Adres = adres ?? "(nog niet ingesteld)",
+            Voorstelling = voorstelling,
+            GmailAdres = gmailAdres ?? "(nog niet gekoppeld)",
+            GmailIsGekoppeld = gmailGeheimen.IsGekoppeld,
+            SmtpServer = "smtp.gmail.com",
+            SmtpPoort = "587",
+            SmtpGesteld = gmailGeheimen.IsGekoppeld,
+            SmtpGebruiker = gmailAdres ?? ""
+        });
+    }
+
+    [HttpPost("email")]
+    [ValidateAntiForgeryToken]
+    public IActionResult GmailOpslaan(string gmailAdres, string gmailAppWachtwoord)
+    {
+        ViewData["Titel"] = "E-mail";
+
+        if (string.IsNullOrWhiteSpace(gmailAdres) || !gmailAdres.Contains('@'))
+        {
+            TempData["Foutmelding"] = "Voer een geldig Gmail-adres in (bijvoorbeeld naam@gmail.com).";
+            return RedirectToAction(nameof(Email));
+        }
+
+        // Bij het wijzigen van alleen het adres mag het bestaande App-wachtwoord blijven staan.
+        var bestaandWachtwoord = gmailGeheimen.Lezen().AppWachtwoord;
+        if (string.IsNullOrWhiteSpace(gmailAppWachtwoord))
+        {
+            if (string.IsNullOrWhiteSpace(bestaandWachtwoord))
+            {
+                TempData["Foutmelding"] = "Vul ook het Google App-wachtwoord in (16 tekens). Zonder App-wachtwoord kan er geen mail verzonden worden.";
+                return RedirectToAction(nameof(Email));
+            }
+
+            gmailAppWachtwoord = bestaandWachtwoord;
+        }
+
+        try
+        {
+            gmailGeheimen.Opslaan(gmailAdres.Trim(), gmailAppWachtwoord);
+            logger.LogInformation("Gmail-adres gekoppeld: {Adres}.", gmailAdres);
+            TempData["Melding"] = "Gmail-adres en App-wachtwoord zijn opgeslagen. Sla eventueel je profiel-opzenderadres op in /admin/profiel.";
+
+            // Koppel ook het profiel als nog niet ingesteld, zodat de afzender consistent is.
+            var profiel = db.Profielen.FirstOrDefault();
+            if (profiel is null)
+            {
+                db.Profielen.Add(new Profiel
+                {
+                    VolledigeNaam = "Sander Van Praet",
+                    Email = gmailAdres.Trim(),
+                    BijgewerktOp = DateTime.Now
+                });
+                db.SaveChanges();
+            }
+            else if (string.IsNullOrWhiteSpace(profiel.Email))
+            {
+                profiel.Email = gmailAdres.Trim();
+                profiel.BijgewerktOp = DateTime.Now;
+                db.SaveChanges();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Gmail-instelling kon niet worden opgeslagen.");
+            TempData["Foutmelding"] = "De Gmail-instelling kon niet worden opgeslagen. Zie de serverlog voor details.";
+        }
+
+        return RedirectToAction(nameof(Email));
+    }
+
+    [HttpPost("email/verwijderen")]
+    [ValidateAntiForgeryToken]
+    public IActionResult GmailVerwijderen()
+    {
+        ViewData["Titel"] = "E-mail";
+
+        try
+        {
+            gmailGeheimen.Verwijderen();
+            logger.LogInformation("Gmail-adres en App-wachtwoord zijn verwijderd.");
+            TempData["Melding"] = "Gmail-adres en App-wachtwoord zijn verwijderd.";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Gmail-instelling kon niet worden verwijderd.");
+            TempData["Foutmelding"] = "De Gmail-instelling kon niet worden verwijderd. Zie de serverlog voor details.";
+        }
+
+        return RedirectToAction(nameof(Email));
+    }
+
+    [HttpPost("email/test")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EmailTest()
+    {
+        var profiel = db.Profielen.FirstOrDefault();
+        var adres = profiel?.Email?.Trim();
+        ViewData["Titel"] = "E-mail";
+
+        if (string.IsNullOrWhiteSpace(adres))
+        {
+            TempData["Foutmelding"] = "Stel eerst een e-mailadres in op /admin/profiel voordat je de testmail kunt verzenden.";
+            return RedirectToAction(nameof(Email));
+        }
+
+        if (!gmailGeheimen.IsGekoppeld)
+        {
+            TempData["Foutmelding"] = "Er is geen Gmail-adres gekoppeld. Koppel eerst een Gmail-adres via het formulier hierboven.";
+            return RedirectToAction(nameof(Email));
+        }
+
+        try
+        {
+            await email.VerstuurTestmailAsync(adres!);
+
+            TempData["Melding"] = $"Testmail verzonden naar {adres}. Controleer je inbox (en eventueel de spammap).";
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Testmail kon niet worden verzonden.");
+
+            // Toon de leesbare oorzaak én de ruwe melding van de Gmail-server,
+            // zodat een verkeerd App-wachtwoord of een geblokkeerde verbinding
+            // meteen duidelijk is.
+            var fouttekst = ex.Message;
+            if (ex.InnerException is not null &&
+                !fouttekst.Contains(ex.InnerException.Message, StringComparison.OrdinalIgnoreCase))
+            {
+                fouttekst += $" (Gmail-server: {ex.InnerException.Message})";
+            }
+
+            fouttekst = fouttekst.Replace("\r", " ").Replace("\n", " ");
+            TempData["Foutmelding"] = $"Testmail kon niet worden verzonden: {fouttekst}";
+        }
+
+        return RedirectToAction(nameof(Email));
+    }
+
+    /* ---------- Berichten ---------- */
 
     [HttpPost("berichten/{id:int}/gelezen")]
     [ValidateAntiForgeryToken]
@@ -1219,7 +1400,23 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     }
 
     private static string[] SplitsBijschriften(string? tekst) =>
-        (tekst ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);    public class DashboardWeergave
+        (tekst ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    public class EmailWeergave
+    {
+        public string Adres { get; set; } = "";
+        public string Voorstelling { get; set; } = "";
+
+        public string SmtpServer { get; set; } = "";
+        public string SmtpPoort { get; set; } = "";
+        public string SmtpGebruiker { get; set; } = "";
+        public bool SmtpGesteld { get; set; }
+
+        public string GmailAdres { get; set; } = "";
+        public bool GmailIsGekoppeld { get; set; }
+    }
+
+    public class DashboardWeergave
     {
         public int AantalProjecten { get; set; }
         public int AantalOngelezenBerichten { get; set; }

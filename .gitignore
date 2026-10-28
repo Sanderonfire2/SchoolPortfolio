@@ -10,11 +10,20 @@ obj/
 # App data (wordt bij start automatisch gevuld door DataInitializer)
 app.db
 app.db.backup-*
-*.db.bak
+app.db.bak-*
+*.db-shm
+*.db-wal
 nohup.out
 server*.log
 server*.pid
 *_log.txt
+
+# Lokale app-data: Data Protection-sleutels en versleutelde Gmail-gegevens.
+# Deze map hoort op de server te staan, nooit in de repository.
+App_Data/
+
+# Lokale productie-instellingen (kan een wachtwoord bevatten)
+appsettings.Production.json
 
 # Tijdelijke schrapings-/debugbestanden
 tok*.txt

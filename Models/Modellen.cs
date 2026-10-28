@@ -197,6 +197,7 @@ public class ContactBericht
     public string Inhoud { get; set; } = "";
     public DateTime VerstuurdOp { get; set; }
     public bool IsGelezen { get; set; }
+    public bool Beantwoord { get; set; }
 }
 
 public class ContactFormulier

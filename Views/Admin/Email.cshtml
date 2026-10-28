@@ -1,0 +1,122 @@
+@model SchoolPortfolio.Controllers.AdminController.EmailWeergave
+@{
+    Layout = "_LayoutBeheer";
+}
+
+<div class="kopregel">
+    <div>
+        <span class="over-label">Integraties</span>
+        <h1>E-mail</h1>
+    </div>
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+@if (TempData["Foutmelding"] is string fout)
+{
+    <div class="kenbaar kenbaar--fout" role="status">@fout</div>
+}
+
+<section class="sectie" style="border-top:1px solid var(--lijn);">
+    <div class="container">
+        <div class="veld">
+            <label class="veldnaam">Afzenderadres (centrale instelling)</label>
+            <p class="tekst-sub" style="margin:0.2rem 0 0 0;">
+                Dit adres wordt gebruikt voor <strong>alle</strong> e-mailintegraties op de site:
+                de bevestiging naar de bezoeker na het contactformulier en de notificatie aan jou
+                als beheerder. Wijzig het in <a href="/admin/profiel">/admin/profiel</a>.
+            </p>
+        </div>
+
+        <div class="sectie-kop" style="margin-top:2rem;">
+            <h2>Status van de e-mailverzending</h2>
+        </div>
+
+        <div class="veld" style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem;">
+            <dl class="feitelijst">
+                <div><dt>Afzenderadres</dt><dd>@Model.Adres</dd></div>
+                <div><dt>Afzendernaam</dt><dd>@Model.Voorstelling</dd></div>
+                <div><dt>Gmail SMTP</dt><dd>@Model.SmtpServer · poort @Model.SmtpPoort · STARTTLS (App-wachtwoord)</dd></div>
+                <div><dt>Gekoppeld Gmail-adres</dt><dd>@Model.GmailAdres</dd></div>
+                <div>
+                    <dt>App-wachtwoord ingesteld</dt>
+                    <dd>
+                        @(Model.GmailIsGekoppeld
+                            ? "Ja — verzending via Gmail SMTP is mogelijk"
+                            : "Nee — koppel hieronder een Gmail-adres met App-wachtwoord")
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="sectie-kop" style="margin-top:2rem;">
+            <h2>Gmail koppelen of wijzigen</h2>
+        </div>
+
+        <form method="post" asp-action="GmailOpslaan" class="veld"
+              style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem; max-width:34rem;">
+            @Html.AntiForgeryToken()
+
+            <div class="veld">
+                <label class="veldnaam" for="gmailAdres">Gmail-adres</label>
+                <input class="invoer" type="email" id="gmailAdres" name="gmailAdres"
+                       value="@(Model.GmailIsGekoppeld ? Model.GmailAdres : "")"
+                       placeholder="naam@gmail.com" autocomplete="email" required />
+            </div>
+
+            <div class="veld">
+                <label class="veldnaam" for="gmailAppWachtwoord">Google App-wachtwoord</label>
+                <input class="invoer" type="password" id="gmailAppWachtwoord" name="gmailAppWachtwoord"
+                       placeholder="@(Model.GmailIsGekoppeld ? "Leeg laten = bestaand App-wachtwoord behouden" : "16 tekens, spaties mogen")"
+                       autocomplete="new-password" @(Model.GmailIsGekoppeld ? "" : "required") />
+                <p class="formuliernota" style="margin-top:0.4rem;">
+                    Maak dit aan op
+                    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>
+                    (vereist 2-stapsverificatie). Het wachtwoord wordt versleuteld bewaard in
+                    <code>App_Data/gmail-geheimen.json</code> en nooit meer getoond.
+                </p>
+            </div>
+
+            <button class="knop knop--primair" type="submit">
+                @(Model.GmailIsGekoppeld ? "Koppeling bijwerken" : "Gmail koppelen")
+            </button>
+        </form>
+
+        @if (Model.GmailIsGekoppeld)
+        {
+            <form method="post" asp-action="GmailVerwijderen" style="margin-top:0.8rem;">
+                @Html.AntiForgeryToken()
+                <button class="knop knop--stil" type="submit">Koppeling verwijderen</button>
+            </form>
+        }
+
+        <div class="sectie-kop" style="margin-top:2rem;">
+            <h2>Testmail</h2>
+        </div>
+
+        <div class="veld" style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem;">
+            <p style="margin:0 0 1rem 0;">
+                Verstuur een echte testmail naar het afzenderadres hierboven. Lukt het niet,
+                dan zie je hier de foutmelding van de Gmail-server.
+            </p>
+            <form method="post" asp-action="EmailTest">
+                @Html.AntiForgeryToken()
+                <button class="knop knop--primair" type="submit">Testmail verzenden</button>
+            </form>
+        </div>
+
+        <div class="sectie-kop" style="margin-top:2rem;">
+            <h2>Gebruikte sjablonen</h2>
+        </div>
+
+        <div class="tekst-sub" style="max-width:42rem;">
+            <ul style="margin-top:0.5rem; padding-left:1.2rem;">
+                <li><strong>contact-bevestiging</strong> — bevestiging aan de bezoeker die een contactbericht heeft ingediend.</li>
+                <li><strong>contact-notificatie-beheerder</strong> — notificatie aan de beheerder dat er een nieuw bericht is.</li>
+                <li><strong>beheerder-inlogbevestiging</strong> — bevestiging dat de beheerder is ingelogd (op verzoek).</li>
+            </ul>
+        </div>
+    </div>
+</section>

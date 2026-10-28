@@ -7,6 +7,14 @@
     <div class="container">
         <div class="inlogpaneel">
             <h1>Beheer · inloggen</h1>
+            @if (ViewBag.WachtwoordNietIngesteld as bool? == true)
+            {
+                <div class="kenbaar kenbaar--fout" role="status" style="margin-bottom:1rem;">
+                    Op deze server is nog geen beheerderswachtwoord ingesteld. Stel de
+                    omgevingsvariabele <code>Beheer__Wachtwoord</code> in (of
+                    <code>Beheer:Wachtwoord</code> in appsettings) en herstart de site.
+                </div>
+            }
             <form method="post" asp-controller="Admin" asp-action="Inloggen">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="terug" value="@ViewBag.TerugUrl" />
