@@ -1,5 +1,7 @@
 using System.Globalization;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SchoolPortfolio.Models;
@@ -44,6 +46,12 @@ public static class DataInitializer
         try
         {
             MaakOntbrekendeTabellenAan(db);
+
+            // De migratie die deze tabellen zou aanmaken is nu inhoudelijk uitgevoerd.
+            // Zonder deze stempel blijft ze 'pending' en blokkeert ze élke latere
+            // migratie: Migrate() breekt af op de al bestaande tabel en de migratie
+            // die daarna kwam (de kolom Beantwoord) wordt dan nooit toegepast.
+            StempelMigratieAlsToegepast(db, "20261027094014_VoegFaqDownloadsEnAreiToe");
         }
         catch (Exception ex)
         {
@@ -67,6 +75,18 @@ public static class DataInitializer
         catch (Exception ex)
         {
             Log(services, LogLevel.Error, ex, "Migrate() mislukt.");
+        }
+
+        // Vangnet: voeg kolommen toe die door een overgeslagen of mislukte migratie
+        // ontbreken. Zo blijft een oudere database bruikbaar, ook wanneer de
+        // migratiegeschiedenis niet (meer) klopt met het echte schema.
+        try
+        {
+            HerstelOntbrekendeKolommen(db, services);
+        }
+        catch (Exception ex)
+        {
+            Log(services, LogLevel.Error, ex, "Ontbrekende kolommen kunnen niet worden hersteld.");
         }
 
         if (!db.Database.CanConnect())
@@ -179,6 +199,197 @@ public static class DataInitializer
         {
             db.Database.ExecuteSqlRaw(script);
         }
+    }
+
+    /// <summary>
+    /// Zet een migratie op 'toegepast' in de geschiedenis, zonder iets aan het
+    /// schema te veranderen. Alleen gebruiken wanneer de inhoud van die migratie
+    /// al op een andere manier is uitgevoerd (zoals de tabellen hierboven).
+    /// </summary>
+    private static void StempelMigratieAlsToegepast(SiteDbContext db, string migratieId)
+    {
+        var versie = typeof(SiteDbContext).Assembly.GetName().Version!.ToString(3);
+        db.Database.ExecuteSqlRaw(
+            "INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({0}, {1});",
+            migratieId, versie);
+    }
+
+    /// <summary>
+    /// Vergelijkt het echte SQLite-schema met het EF-model en voegt elke kolom toe
+    /// die ontbreekt. Dit repareert databases waarvan de migratiegeschiedenis is
+    /// gestempeld (waardoor Migrate() niets meer doet) of waarvan een migratie is
+    /// afgebroken op een al bestaande tabel. Bestaande gegevens blijven staan.
+    /// </summary>
+    private static void HerstelOntbrekendeKolommen(SiteDbContext db, IServiceProvider services)
+    {
+        var connectie = (SqliteConnection)db.Database.GetDbConnection();
+        var wasOpen = connectie.State == System.Data.ConnectionState.Open;
+        if (!wasOpen)
+        {
+            connectie.Open();
+        }
+
+        try
+        {
+            var toegevoegd = new List<string>();
+
+            foreach (var entiteit in db.Model.GetEntityTypes())
+            {
+                var tabel = entiteit.GetTableName();
+                if (string.IsNullOrWhiteSpace(tabel))
+                {
+                    continue;
+                }
+
+                var bestaandeKolommen = KolomNamen(connectie, tabel);
+                if (bestaandeKolommen.Count == 0)
+                {
+                    // Tabel bestaat (nog) niet; die komt uit een migratie of EnsureCreated.
+                    continue;
+                }
+
+                var primaireSleutel = entiteit.FindPrimaryKey()?.Properties;
+
+                foreach (var eigenschap in entiteit.GetProperties())
+                {
+                    if (primaireSleutel is not null && primaireSleutel.Contains(eigenschap))
+                    {
+                        continue;
+                    }
+
+                    var kolom = eigenschap.GetColumnName();
+                    if (string.IsNullOrWhiteSpace(kolom) || bestaandeKolommen.Contains(kolom))
+                    {
+                        continue;
+                    }
+
+                    var sqlType = eigenschap.GetColumnType();
+                    string? standaard = null;
+                    if (!eigenschap.IsNullable)
+                    {
+                        standaard = StandaardWaarde(eigenschap);
+                        if (standaard is null)
+                        {
+                            Log(services, LogLevel.Warning, null,
+                                "Kolom " + tabel + "." + kolom + " ontbreekt en heeft geen veilige standaardwaarde; " +
+                                "voeg hem handmatig toe.");
+                            continue;
+                        }
+                    }
+
+                    try
+                    {
+                        using var opdracht = connectie.CreateCommand();
+                        opdracht.CommandText =
+                            "ALTER TABLE \"" + tabel.Replace("\"", "\"\"") + "\" ADD COLUMN \"" +
+                            kolom.Replace("\"", "\"\"") + "\" " + sqlType +
+                            (standaard is null ? string.Empty : " NOT NULL DEFAULT " + standaard) + ";";
+                        opdracht.ExecuteNonQuery();
+
+                        toegevoegd.Add(tabel + "." + kolom);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Eén kolom mag de rest van de reparatie niet blokkeren.
+                        Log(services, LogLevel.Warning, ex,
+                            "Kolom " + tabel + "." + kolom + " kon niet worden toegevoegd.");
+                    }
+                }
+            }
+
+            if (toegevoegd.Count > 0)
+            {
+                Log(services, LogLevel.Warning, null,
+                    "Ontbrekende kolommen in de database toegevoegd: " + string.Join(", ", toegevoegd) + ".");
+            }
+        }
+        finally
+        {
+            if (!wasOpen && connectie.State == System.Data.ConnectionState.Open)
+            {
+                connectie.Close();
+            }
+        }
+    }
+
+    private static HashSet<string> KolomNamen(SqliteConnection connectie, string tabel)
+    {
+        using var opdracht = connectie.CreateCommand();
+        opdracht.CommandText = "PRAGMA table_info(\"" + tabel.Replace("\"", "\"\"") + "\");";
+
+        using var lezer = opdracht.ExecuteReader();
+        var namen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (lezer.Read())
+        {
+            namen.Add(lezer.GetString(1));
+        }
+
+        return namen;
+    }
+
+    /// <summary>
+    /// Geeft een SQL-standaardwaarde voor een verplichte kolom, afgeleid van het
+    /// CLR-type (of van de expliciete standaardwaarde in het model).
+    /// </summary>
+    private static string? StandaardWaarde(IProperty eigenschap)
+    {
+        if (eigenschap.GetDefaultValue() is { } ingesteld)
+        {
+            return ingesteld switch
+            {
+                bool b => b ? "1" : "0",
+                string s => "'" + s.Replace("'", "''") + "'",
+                DateTime d => "'" + d.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + "'",
+                _ => Convert.ToString(ingesteld, CultureInfo.InvariantCulture)
+            };
+        }
+
+        var standaardSql = eigenschap.GetDefaultValueSql();
+        if (!string.IsNullOrWhiteSpace(standaardSql))
+        {
+            return standaardSql;
+        }
+
+        var type = Nullable.GetUnderlyingType(eigenschap.ClrType) ?? eigenschap.ClrType;
+
+        if (type == typeof(bool) || type == typeof(byte) || type == typeof(short) ||
+            type == typeof(int) || type == typeof(long) || type == typeof(float) ||
+            type == typeof(double) || type == typeof(decimal) || type.IsEnum)
+        {
+            return "0";
+        }
+
+        if (type == typeof(string))
+        {
+            return "''";
+        }
+
+        if (type == typeof(DateTime))
+        {
+            return "'0001-01-01 00:00:00'";
+        }
+
+        if (type == typeof(DateTimeOffset))
+        {
+            return "'0001-01-01 00:00:00+00:00'";
+        }
+
+        if (type == typeof(TimeSpan))
+        {
+            return "'00:00:00'";
+        }
+
+        if (type == typeof(Guid))
+        {
+            return "'00000000-0000-0000-0000-000000000000'";
+        }
+
+        if (type == typeof(byte[]))
+        {
+            return "X''";
+        }
+
+        return null;
     }
 
     private static void Seed(SiteDbContext db)
@@ -469,10 +680,12 @@ public static class DataInitializer
 
     private static bool IsReedsBestaandFout(Exception ex)
     {
-        if (ex is Microsoft.Data.Sqlite.SqliteException sq && sq.SqliteErrorCode == 1)
+        if (ex is SqliteException sq && sq.SqliteErrorCode == 1)
         {
+            // 'has no column named' hoort hier níet bij: dat betekent dat het schema
+            // achterloopt en moet worden gerepareerd, niet dat de migratie klaar is.
             return sq.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
-                   sq.Message.Contains("has no column named", StringComparison.OrdinalIgnoreCase);
+                   sq.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase);
         }
         return false;
     }

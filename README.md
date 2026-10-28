@@ -29,7 +29,17 @@ Op MonsterASP.NET stel je die variabele zo in:
 
 Zonder die variabele start de site gewoon, maar toont `/admin/inloggen` een duidelijke melding
 in plaats van een foutpagina. Een alternatief is een `appsettings.Production.json` op de server
-(Die staat in `.gitignore`, dus hij komt nooit op GitHub.)
+(die staat in `.gitignore`, dus hij komt nooit op GitHub). Zet dat bestand op MonsterASP onder
+**Protected files**, zodat een volgende git-deploy het niet vervangt.
+
+Zet het wachtwoord nooit in `appsettings.json`: dat bestand staat wél in de repository.
+
+### 500 op /admin na een update?
+
+De database herstelt zichzelf bij het starten. Ontbrekende tabellen en kolommen (bijvoorbeeld
+`ContactBerichten.Beantwoord`) worden automatisch toegevoegd, ook wanneer de migratiegeschiedenis
+van een oudere database niet meer klopt. Herstart de app na een deploy; daarna werkt `/admin`
+weer. In de log verschijnt dan één regel met de kolommen die zijn toegevoegd.
 
 ## E-mail: echt versturen via Brevo vanaf je eigen adres
 
@@ -92,7 +102,10 @@ in de database naar een andere host zou wijzen. Een vervangen pdf via **/admin/a
 
 ## Deploy naar productie
 
-1. Stel de omgevingsvariabele `Beheer__Wachtwoord` in op de server.
+1. Stel de omgevingsvariabele `Beheer__Wachtwoord` in op de server (of gebruik
+   `appsettings.Production.json`, dat je onder **Protected files** zet).
 2. Bouw met `dotnet publish -c Release` of gebruik de git-deploy van de host.
 3. De SQLite-database (`app.db`) en de map `App_Data` blijven op de server staan; bij een update
    wordt de database automatisch bijgewerkt/aangevuld door de initializer.
+4. Start de app opnieuw. De initializer voegt ontbrekende tabellen én kolommen toe, zodat een
+   oudere database niet zorgt voor een 500 op `/admin`.
