@@ -15,6 +15,12 @@
 {
     <div class="kenbaar kenbaar--ok" role="status">@melding</div>
 }
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="kenbaar kenbaar--fout" role="alert">
+        <div asp-validation-summary="ModelOnly"></div>
+    </div>
+}
 
 <form method="post" enctype="multipart/form-data" asp-controller="Admin" asp-action="Profiel" style="max-width:40rem;">
     @Html.AntiForgeryToken()

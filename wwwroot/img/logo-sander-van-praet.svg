@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Sander Van Praet – Elektriciteit">
+  <title>Sander Van Praet – Elektriciteit</title>
+  <defs>
+    <path id="boven" d="M 68 200 A 132 132 0 0 1 332 200"/>
+    <path id="onder" d="M 42 200 A 158 158 0 0 0 358 200"/>
+  </defs>
+  <!-- Ringen -->
+  <circle cx="200" cy="200" r="196" fill="#0f172a" stroke="#facc15" stroke-width="6"/>
+  <circle cx="200" cy="200" r="170" fill="none" stroke="#38bdf8" stroke-width="2"/>
+  <!-- Tekst op de boog -->
+  <text font-family="'Segoe UI', Arial, Helvetica, sans-serif" font-size="30" font-weight="800" fill="#ffffff" letter-spacing="2" text-anchor="middle">
+    <textPath href="#boven" startOffset="50%">SANDER VAN PRAET</textPath>
+  </text>
+  <text font-family="'Segoe UI', Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#facc15" letter-spacing="6" text-anchor="middle">
+    <textPath href="#onder" startOffset="50%">ELEKTRICITEIT</textPath>
+  </text>
+  <!-- Scheidingspunten -->
+  <circle cx="52" cy="200" r="6" fill="#38bdf8"/>
+  <circle cx="348" cy="200" r="6" fill="#38bdf8"/>
+  <!-- Icoon in het midden -->
+  <g transform="translate(200,200)">
+    <circle r="88" fill="#111c36" stroke="#facc15" stroke-width="5"/>
+    <g stroke="#38bdf8" stroke-width="4" stroke-linecap="round">
+      <path d="M-88 0 H-108"/>
+      <path d="M88 0 H108"/>
+    </g>
+    <g fill="#38bdf8">
+      <circle cx="-108" cy="0" r="5"/>
+      <circle cx="108" cy="0" r="5"/>
+    </g>
+    <path d="M12 -60 L-30 8 H-4 L-16 60 L32 -10 H6 Z" fill="#facc15"/>
+  </g>
+</svg>

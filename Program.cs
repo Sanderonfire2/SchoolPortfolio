@@ -157,6 +157,17 @@ app.Use(async (context, volgende) =>
         "frame-src 'self'; " +
         "frame-ancestors 'self'; " +
         "object-src 'self'";
+
+    // Geüploade SVG's zijn afbeeldingen, geen documenten: ook na het saneren
+    // krijgen ze een sandbox-CSP, zodat een script er nooit kan uitvoeren.
+    if (context.Request.Path.StartsWithSegments("/uploads") &&
+        context.Request.Path.Value?.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        headers["Content-Security-Policy"] =
+            "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox";
+        headers["X-Content-Type-Options"] = "nosniff";
+    }
+
     await volgende();
 });
 

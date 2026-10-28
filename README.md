@@ -111,9 +111,10 @@ in de database naar een andere host zou wijzen. Een vervangen pdf via **/admin/a
 - De beheerderswachtwoordvergelijking gebeurt constant-time om timingaanvallen te blokkeren.
 - Het beheerderswachtwoord staat buiten de repository: lokaal in .NET user secrets, in productie
   als omgevingsvariabele (of in het genegeerde `appsettings.Production.json`).
-- Uploads: witte lijst van extensies (geen `.svg`, die kan scriptcode bevatten), limieten
-  per soort (8 MB beeld, 64 MB video, 16 MB pdf) en een willekeurige bestandsnaam;
-  padtraversal is onmogelijk omdat alleen de bestandsnaam uit het publieke pad wordt gebruikt.
+- Uploads: witte lijst van extensies, limieten per soort (8 MB beeld, 64 MB video, 16 MB pdf)
+  en een willekeurige bestandsnaam; padtraversal is onmogelijk omdat alleen de bestandsnaam
+  uit het publieke pad wordt gebruikt. Geüploade SVG's worden gesaneerd (scripts,
+  event-handlers en externe verwijzingen eruit) en met een sandbox-CSP geserveerd.
 - E-mailgegevens (afzender, Brevo SMTP-login en SMTP-key) staan versleuteld in `App_Data` en nooit in de repository of in de browser.
 
 ## Deploy naar productie

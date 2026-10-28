@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Microsoft.AspNetCore.Http;
 using PDFtoImage;
 using SkiaSharp;
@@ -6,10 +7,10 @@ namespace SchoolPortfolio.Services;
 
 public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> logger)
 {
-    // .svg is bewust uitgesloten: een QA-upload kan scriptcode bevatten (opgeslagen XSS).
-    // Eerste-SVG's die de site zelf gebruikt, staan statisch in wwwroot/img.
+    // SVG mag, maar wordt vóór opslag gesaneerd (scripts, event-handlers en
+    // externe verwijzingen eruit) en met een sandbox-CSP geserveerd.
     private static readonly string[] ToegestaneBeelden =
-        [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+        [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
 
     private static readonly string[] ToegestaneVideos =
         [".mp4", ".webm", ".mov"];
@@ -94,10 +95,28 @@ public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> 
         var nieuweNaam = $"{soort}-{onderwerp.ToLowerInvariant()}-{Guid.NewGuid().ToString("N")[..8]}{extensie}";
         var doelpad = Path.Combine(uploadsMap, nieuweNaam);
 
-        await using var stroom = new FileStream(doelpad, FileMode.Create);
-        await bestand.CopyToAsync(stroom);
+        // Eerst volledig wegschrijven en de stroom sluiten: de SVG-sanitizer en
+        // de PDF-voorvertoning lezen het bestand daarna van schijf.
+        await using (var stroom = new FileStream(doelpad, FileMode.Create))
+        {
+            await bestand.CopyToAsync(stroom);
+        }
 
         logger.LogInformation("Bestand opgeslagen: {Bestand} ({Grootte})", nieuweNaam, GrootteAlsTekst(bestand.Length));
+
+        if (extensie == ".svg")
+        {
+            try
+            {
+                SaniteerSvg(doelpad);
+            }
+            catch
+            {
+                // Laat nooit een half gevalideerd SVG-bestand achter.
+                try { File.Delete(doelpad); } catch { /* opruimen mag niet de fout maskeren */ }
+                throw;
+            }
+        }
 
         if (soort == "document")
         {
@@ -105,6 +124,76 @@ public class UploadService(IWebHostEnvironment omgeving, ILogger<UploadService> 
         }
 
         return $"/uploads/{nieuweNaam}";
+    }
+
+    /// <summary>
+    /// Maakt een geüpload SVG veilig: scripts, foreignObject, event-handlers en
+    /// externe of javascript-verwijzingen worden verwijderd. Een profielfoto kan
+    /// daardoor geen scriptcode uitvoeren wanneer iemand het bestand direct opent.
+    /// </summary>
+    private static void SaniteerSvg(string pad)
+    {
+        XDocument document;
+        try
+        {
+            document = XDocument.Load(pad, LoadOptions.None);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Het SVG-bestand kon niet worden gelezen. Gebruik een geldig, eenvoudig SVG-bestand.", ex);
+        }
+
+        if (document.Root is null ||
+            !document.Root.Name.LocalName.Equals("svg", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Het bestand is geen geldig SVG-bestand.");
+        }
+
+        string[] verbodenElementen =
+            ["script", "foreignObject", "iframe", "object", "embed", "handler", "listener", "metadata"];
+
+        foreach (var element in document.Descendants()
+                     .Where(e => verbodenElementen.Contains(e.Name.LocalName, StringComparer.OrdinalIgnoreCase))
+                     .ToList())
+        {
+            element.Remove();
+        }
+
+        foreach (var element in document.Descendants())
+        {
+            foreach (var attribuut in element.Attributes().ToList())
+            {
+                var naam = attribuut.Name.LocalName;
+
+                if (naam.StartsWith("on", StringComparison.OrdinalIgnoreCase))
+                {
+                    attribuut.Remove();
+                    continue;
+                }
+
+                if ((naam.Equals("href", StringComparison.OrdinalIgnoreCase) ||
+                     naam.Equals("src", StringComparison.OrdinalIgnoreCase)) &&
+                    !IsVeiligeSvgVerwijzing(attribuut.Value))
+                {
+                    attribuut.Remove();
+                }
+            }
+        }
+
+        document.Save(pad);
+    }
+
+    private static bool IsVeiligeSvgVerwijzing(string waarde)
+    {
+        var verwijzing = waarde.Trim();
+
+        // Interne verwijzingen (#gradient, #clip) en ingebedde rasterbeelden mogen.
+        return verwijzing.StartsWith('#') ||
+               verwijzing.StartsWith("data:image/png", StringComparison.OrdinalIgnoreCase) ||
+               verwijzing.StartsWith("data:image/jpeg", StringComparison.OrdinalIgnoreCase) ||
+               verwijzing.StartsWith("data:image/webp", StringComparison.OrdinalIgnoreCase) ||
+               verwijzing.StartsWith("data:image/gif", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
