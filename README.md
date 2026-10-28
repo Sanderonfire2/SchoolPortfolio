@@ -17,8 +17,21 @@ Ontbrekende rijen worden bij een herstart aangevuld, bestaande rijen blijven sta
 
 | Omgeving | Waar staat het wachtwoord? |
 |---|---|
-| Lokaal (`dotnet run`) | `appsettings.Development.json` → `Beheer:Wachtwoord` (dev-wachtwoord staat daar al) |
-| Productie | omgevingsvariabele `Beheer__Wachtwoord` |
+| Lokaal (`dotnet run`) | .NET user secrets (buiten de repository) |
+| Productie | omgevingsvariabele `Beheer__Wachtwoord` of `appsettings.Production.json` |
+
+Het beheerderswachtwoord staat nooit in de repository. Lokaal zet je het één keer in de
+user-secrets-opslag van je eigen Windows-profiel:
+
+```bash
+dotnet user-secrets set "Beheer:Wachtwoord" "je-wachtwoord"
+dotnet user-secrets list   # toont de ingestelde sleutels
+dotnet run
+```
+
+`dotnet run` gebruikt het launchprofiel met `ASPNETCORE_ENVIRONMENT=Development`, en in die
+omgeving laadt ASP.NET Core de user secrets automatisch. Op een verse clone moet je het
+wachtwoord dus opnieuw instellen; er staat bewust geen standaardwachtwoord in de repo.
 
 Op MonsterASP.NET stel je die variabele zo in:
 
@@ -32,7 +45,8 @@ in plaats van een foutpagina. Een alternatief is een `appsettings.Production.jso
 (die staat in `.gitignore`, dus hij komt nooit op GitHub). Zet dat bestand op MonsterASP onder
 **Protected files**, zodat een volgende git-deploy het niet vervangt.
 
-Zet het wachtwoord nooit in `appsettings.json`: dat bestand staat wél in de repository.
+Zet het wachtwoord nooit in `appsettings.json` of `appsettings.Development.json`: die bestanden
+staan wél in de repository. Lokaal gebruik je user secrets, productie gebruikt de omgeving.
 
 ### 500 op /admin na een update?
 
@@ -95,6 +109,8 @@ in de database naar een andere host zou wijzen. Een vervangen pdf via **/admin/a
   (met `frame-src 'self'` voor de AREI-pdf's en `frame-ancestors 'self'`).
 - Beheerpagina's sturen `Cache-Control: no-store` zodat ze niet in de browser- of proxycache blijven.
 - De beheerderswachtwoordvergelijking gebeurt constant-time om timingaanvallen te blokkeren.
+- Het beheerderswachtwoord staat buiten de repository: lokaal in .NET user secrets, in productie
+  als omgevingsvariabele (of in het genegeerde `appsettings.Production.json`).
 - Uploads: witte lijst van extensies (geen `.svg`, die kan scriptcode bevatten), limieten
   per soort (8 MB beeld, 64 MB video, 16 MB pdf) en een willekeurige bestandsnaam;
   padtraversal is onmogelijk omdat alleen de bestandsnaam uit het publieke pad wordt gebruikt.

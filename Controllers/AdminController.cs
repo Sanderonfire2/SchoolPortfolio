@@ -83,10 +83,12 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         if (ingesteld is null)
         {
             logger.LogError("Er is geen beheerderswachtwoord geconfigureerd; inloggen is geblokkeerd. " +
-                "Stel de omgevingsvariabele Beheer__Wachtwoord in (of Beheer:Wachtwoord in appsettings) en herstart de site.");
+                "Stel de omgevingsvariabele Beheer__Wachtwoord in (productie) of gebruik lokaal " +
+                "'dotnet user-secrets set \"Beheer:Wachtwoord\" \"…\"', en herstart de site.");
             ModelState.AddModelError(string.Empty,
                 "Op deze server is nog geen beheerderswachtwoord ingesteld. Stel de omgevingsvariabele " +
-                "Beheer__Wachtwoord in (of Beheer:Wachtwoord in appsettings.json) en herstart de site.");
+                "Beheer__Wachtwoord in (productie) of gebruik lokaal 'dotnet user-secrets set " +
+                "\"Beheer:Wachtwoord\" \"…\"', en herstart de site.");
             ViewBag.TerugUrl = terug;
             ViewBag.WachtwoordNietIngesteld = true;
             return View();

@@ -11,8 +11,8 @@
             {
                 <div class="kenbaar kenbaar--fout" role="status" style="margin-bottom:1rem;">
                     Op deze server is nog geen beheerderswachtwoord ingesteld. Stel de
-                    omgevingsvariabele <code>Beheer__Wachtwoord</code> in (of
-                    <code>Beheer:Wachtwoord</code> in appsettings) en herstart de site.
+                    omgevingsvariabele <code>Beheer__Wachtwoord</code> in (productie) of gebruik lokaal
+                    <code>dotnet user-secrets set "Beheer:Wachtwoord" "…"</code>, en herstart de site.
                 </div>
             }
             <form method="post" asp-controller="Admin" asp-action="Inloggen">
