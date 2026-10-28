@@ -24,9 +24,10 @@
         <div class="veld">
             <label class="veldnaam">Afzenderadres (centrale instelling)</label>
             <p class="tekst-sub" style="margin:0.2rem 0 0 0;">
-                Dit adres wordt gebruikt voor <strong>alle</strong> e-mailintegraties op de site:
-                de bevestiging naar de bezoeker na het contactformulier en de notificatie aan jou
-                als beheerder. Wijzig het in <a href="/admin/profiel">/admin/profiel</a>.
+                Alle mails van de site vertrekken van het adres dat je hieronder koppelt:
+                de bevestiging naar de bezoeker en de notificatie aan jou als beheerder.
+                Het adres in <a href="/admin/profiel">/admin/profiel</a> (@Model.Adres) wordt gebruikt
+                als ontvanger van de notificaties.
             </p>
         </div>
 
@@ -36,61 +37,107 @@
 
         <div class="veld" style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem;">
             <dl class="feitelijst">
-                <div><dt>Afzenderadres</dt><dd>@Model.Adres</dd></div>
+                <div><dt>Provider</dt><dd>Brevo — gratis SMTP-relay (300 mails per dag)</dd></div>
+                <div><dt>SMTP-server</dt><dd>@Model.SmtpServer · poort @Model.SmtpPoort · STARTTLS</dd></div>
+                <div><dt>Afzenderadres</dt><dd>@(string.IsNullOrWhiteSpace(Model.Afzender) ? "(nog niet ingesteld)" : Model.Afzender)</dd></div>
                 <div><dt>Afzendernaam</dt><dd>@Model.Voorstelling</dd></div>
-                <div><dt>Gmail SMTP</dt><dd>@Model.SmtpServer · poort @Model.SmtpPoort · STARTTLS (App-wachtwoord)</dd></div>
-                <div><dt>Gekoppeld Gmail-adres</dt><dd>@Model.GmailAdres</dd></div>
+                <div><dt>Brevo SMTP-login</dt><dd>@(string.IsNullOrWhiteSpace(Model.SmtpGebruiker) ? "(nog niet ingesteld)" : Model.SmtpGebruiker)</dd></div>
                 <div>
-                    <dt>App-wachtwoord ingesteld</dt>
+                    <dt>SMTP-key ingesteld</dt>
                     <dd>
-                        @(Model.GmailIsGekoppeld
-                            ? "Ja — verzending via Gmail SMTP is mogelijk"
-                            : "Nee — koppel hieronder een Gmail-adres met App-wachtwoord")
+                        @(Model.IsGekoppeld
+                            ? "Ja — verzending via Brevo SMTP is mogelijk"
+                            : "Nee — vul hieronder je eigen adres en de Brevo SMTP-gegevens in")
                     </dd>
                 </div>
             </dl>
         </div>
 
         <div class="sectie-kop" style="margin-top:2rem;">
-            <h2>Gmail koppelen of wijzigen</h2>
+            <h2>Eigen adres en Brevo koppelen of wijzigen</h2>
         </div>
 
-        <form method="post" asp-action="GmailOpslaan" class="veld"
-              style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem; max-width:34rem;">
+        <form method="post" asp-action="EmailOpslaan" class="veld"
+              style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem; max-width:38rem;">
             @Html.AntiForgeryToken()
 
             <div class="veld">
-                <label class="veldnaam" for="gmailAdres">Gmail-adres</label>
-                <input class="invoer" type="email" id="gmailAdres" name="gmailAdres"
-                       value="@(Model.GmailIsGekoppeld ? Model.GmailAdres : "")"
-                       placeholder="naam@gmail.com" autocomplete="email" required />
+                <label class="veldnaam" for="afzenderAdres">Afzenderadres (eigen domein)</label>
+                <input class="invoer" type="email" id="afzenderAdres" name="afzenderAdres"
+                       value="@Model.Afzender"
+                       placeholder="naam@jouwdomein.be" autocomplete="email" required />
+                <p class="formuliernota" style="margin-top:0.4rem;">
+                    Dit adres moet bij Brevo als <strong>sender</strong> geverifieerd zijn, anders weigert
+                    Brevo de mail. Een Gmail-adres mag hier ook, zolang het maar bij Brevo geverifieerd is.
+                </p>
             </div>
 
             <div class="veld">
-                <label class="veldnaam" for="gmailAppWachtwoord">Google App-wachtwoord</label>
-                <input class="invoer" type="password" id="gmailAppWachtwoord" name="gmailAppWachtwoord"
-                       placeholder="@(Model.GmailIsGekoppeld ? "Leeg laten = bestaand App-wachtwoord behouden" : "16 tekens, spaties mogen")"
-                       autocomplete="new-password" @(Model.GmailIsGekoppeld ? "" : "required") />
+                <label class="veldnaam" for="smtpGebruiker">Brevo SMTP-login</label>
+                <input class="invoer" type="text" id="smtpGebruiker" name="smtpGebruiker"
+                       value="@Model.SmtpGebruiker"
+                       placeholder="naam@jouwdomein.be of 1234567@smtp-brevo.com" autocomplete="username" required />
                 <p class="formuliernota" style="margin-top:0.4rem;">
-                    Maak dit aan op
-                    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>
-                    (vereist 2-stapsverificatie). Het wachtwoord wordt versleuteld bewaard in
-                    <code>App_Data/gmail-geheimen.json</code> en nooit meer getoond.
+                    Dit is het <strong>Login</strong>-veld op de SMTP-pagina van Brevo, niet
+                    noodzakelijk je accountadres.
+                </p>
+            </div>
+
+            <div class="veld">
+                <label class="veldnaam" for="smtpWachtwoord">Brevo SMTP-key</label>
+                <input class="invoer" type="password" id="smtpWachtwoord" name="smtpWachtwoord"
+                       placeholder="@(Model.IsGekoppeld ? "Leeg laten = bestaande SMTP-key behouden" : "De SMTP-key uit je Brevo-dashboard")"
+                       autocomplete="new-password" @(Model.IsGekoppeld ? "" : "required") />
+                <p class="formuliernota" style="margin-top:0.4rem;">
+                    Te maken op
+                    <a href="https://app.brevo.com/settings/keys/smtp" target="_blank" rel="noopener">app.brevo.com → SMTP &amp; API → SMTP</a>.
+                    Gebruik een SMTP-key, niet je accountwachtwoord of een API-key. De gegevens worden
+                    versleuteld bewaard in <code>App_Data/email-geheimen.json</code> en nooit meer getoond.
                 </p>
             </div>
 
             <button class="knop knop--primair" type="submit">
-                @(Model.GmailIsGekoppeld ? "Koppeling bijwerken" : "Gmail koppelen")
+                @(Model.IsGekoppeld ? "Koppeling bijwerken" : "E-mail koppelen")
             </button>
         </form>
 
-        @if (Model.GmailIsGekoppeld)
+        @if (Model.IsGekoppeld)
         {
-            <form method="post" asp-action="GmailVerwijderen" style="margin-top:0.8rem;">
+            <form method="post" asp-action="EmailVerwijderen" style="margin-top:0.8rem;">
                 @Html.AntiForgeryToken()
                 <button class="knop knop--stil" type="submit">Koppeling verwijderen</button>
             </form>
         }
+
+        <div class="sectie-kop" style="margin-top:2rem;">
+            <h2>Eenmalig instellen bij Brevo</h2>
+        </div>
+
+        <ol class="tekst-sub" style="max-width:42rem; padding-left:1.2rem; line-height:1.7;">
+            <li>
+                Maak een gratis account op
+                <a href="https://www.brevo.com/" target="_blank" rel="noopener">brevo.com</a>.
+                De gratis variant verstuurt 300 mails per dag en vraagt geen creditcard.
+            </li>
+            <li>
+                Voeg je eigen adres toe onder
+                <strong>Settings → Senders, Domains &amp; IPs → Senders</strong> en verifieer het met de
+                code die Brevo naar dat adres stuurt. Wil je vanaf je hele domein versturen, authenticeer
+                dan het domein met de DNS-records die Brevo toont (DKIM/DMARC).
+            </li>
+            <li>
+                Ga naar <strong>Settings → SMTP &amp; API → SMTP</strong>, kopieer de <strong>Login</strong>
+                en klik op <strong>Generate a new SMTP key</strong>. De key wordt maar één keer getoond.
+            </li>
+            <li>
+                Vul hierboven je afzenderadres, de SMTP-login en de SMTP-key in en klik op
+                <strong>E-mail koppelen</strong>.
+            </li>
+            <li>
+                Klik daarna op <strong>Testmail verzenden</strong>. Komt de mail niet aan, dan zie je
+                hier de echte foutmelding van Brevo.
+            </li>
+        </ol>
 
         <div class="sectie-kop" style="margin-top:2rem;">
             <h2>Testmail</h2>
@@ -98,8 +145,8 @@
 
         <div class="veld" style="background:var(--oppervlak-zacht); border:1px solid var(--lijn); border-radius:6px; padding:1rem 1.2rem;">
             <p style="margin:0 0 1rem 0;">
-                Verstuur een echte testmail naar het afzenderadres hierboven. Lukt het niet,
-                dan zie je hier de foutmelding van de Gmail-server.
+                Verstuur een echte testmail naar het gekoppelde afzenderadres. Lukt het niet,
+                dan zie je hier de foutmelding van de Brevo-server.
             </p>
             <form method="post" asp-action="EmailTest">
                 @Html.AntiForgeryToken()
@@ -114,7 +161,7 @@
         <div class="tekst-sub" style="max-width:42rem;">
             <ul style="margin-top:0.5rem; padding-left:1.2rem;">
                 <li><strong>contact-bevestiging</strong> — bevestiging aan de bezoeker die een contactbericht heeft ingediend.</li>
-                <li><strong>contact-notificatie-beheerder</strong> — notificatie aan de beheerder dat er een nieuw bericht is.</li>
+                <li><strong>contact-notificatie-beheerder</strong> — notificatie aan de beheerder dat er een nieuw bericht is (antwoorden gaan naar de bezoeker).</li>
                 <li><strong>beheerder-inlogbevestiging</strong> — bevestiging dat de beheerder is ingelogd (op verzoek).</li>
             </ul>
         </div>

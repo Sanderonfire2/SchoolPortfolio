@@ -10,22 +10,21 @@ using SchoolPortfolio.Models;
 namespace SchoolPortfolio.Services;
 
 /// <summary>
-/// Verstuurde transmissiemails (contactbevestiging aan bezoeker, notificatie aan
-/// beheerder bij een nieuw bericht) met als centrale afzender het e-mailadres dat
-/// in het Profiel-record staat — dus één instelling in /admin/profiel bepaalt alle
-/// verzuurders.
+/// Verstuurt transactionele mails (contactbevestiging aan bezoeker, notificatie aan
+/// beheerder bij een nieuw bericht) via de gratis SMTP-relay van Brevo.
 ///
-/// Verzending gebeurt via Gmail SMTP (smtp.gmail.com, poort 587, STARTTLS) met een
-/// Google App-wachtwoord. De gekoppelde Gmail-adres en het App-wachtwoord worden
-/// niet in appsettings.json of in de repository opgeslagen; ze worden versleuteld
-/// opgeslagen via de GmailGeheimen-klasse (ASP.NET Core Data Protection).
+/// Afzender is altijd het eigen adres dat bij /admin/email is ingesteld (moet bij
+/// Brevo als sender geverifieerd zijn); de weergavenaam komt uit het Profiel-record.
+/// De SMTP-login en SMTP-key van Brevo worden versleuteld bewaard via
+/// <see cref="EmailGeheimen"/> (ASP.NET Core Data Protection) en staan dus nooit in
+/// appsettings.json of in de repository.
 ///
-/// Als er geen Gmail-adres is gekoppeld, vindt er geen verzending plaats en wordt
-/// de fout helder gelogd.
+/// Zonder koppeling wordt er niet verstuurd en wordt de oorzaak helder gelogd.
 /// </summary>
-public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailGeheimen gmailGeheimen)
+public class EmailService(SiteDbContext db, ILogger<EmailService> logger, EmailGeheimen emailGeheimen)
 {
-    private string? AfzenderAdres => db.Profielen.FirstOrDefault()?.Email?.Trim();
+    private const string SmtpServer = "smtp-relay.brevo.com";
+    private const int SmtpPoort = 587;
 
     private string AfzenderWeergave =>
         db.Profielen.FirstOrDefault()?.VolledigeNaam?.Trim() ?? "Sander Van Praet";
@@ -35,26 +34,19 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
     /// </summary>
     public async Task VerstuurBevestigingAanBezoekerAsync(ContactBericht bericht)
     {
-        if (string.IsNullOrWhiteSpace(AfzenderAdres))
-        {
-            logger.LogWarning("Geen afzenderadres geconfigureerd; bevestigingsmail naar bezoeker wordt overgeslagen (ContactBericht {Id}).", bericht.Id);
-            return;
-        }
-
         try
         {
             await VerstuurAsync(
                 new MailBericht
                 {
                     Aan = bericht.Email,
-                    Van = AfzenderAdres,
+                    Onderwerp = $"Bevestiging: je bericht “{bericht.Onderwerp}” is ontvangen",
+                    Sjabloon = "contact-bevestiging",
                     Velden = new Dictionary<string, string>
                     {
                         ["naam"] = bericht.Naam,
                         ["onderwerp"] = bericht.Onderwerp
-                    },
-                    Onderwerp = $"Bevestiging: je bericht “{bericht.Onderwerp}” is ontvangen",
-                    Sjabloon = "contact-bevestiging"
+                    }
                 });
             logger.LogInformation("Bevestigingsmail verzonden naar {Email} na bericht {Id}.", bericht.Email, bericht.Id);
         }
@@ -66,22 +58,17 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
 
     /// <summary>
     /// Stuur een notificatie naar de site-eigenaar dat er een nieuw contactbericht is.
+    /// Antwoorden op die mail gaan rechtstreeks naar de bezoeker.
     /// </summary>
     public async Task VerstuurNotificatieAanBeheerderAsync(ContactBericht bericht)
     {
-        if (string.IsNullOrWhiteSpace(AfzenderAdres))
-        {
-            logger.LogWarning("Geen afzenderadres geconfigureerd; notificatie aan beheerder overgeslagen (ContactBericht {Id}).", bericht.Id);
-            return;
-        }
-
         try
         {
             await VerstuurAsync(
                 new MailBericht
                 {
-                    Aan = AfzenderAdres,
-                    Van = AfzenderAdres,
+                    Aan = AfzenderAdres(),
+                    AntwoordAan = bericht.Email,
                     Onderwerp = $"Nieuw contactbericht van {bericht.Naam}: “{bericht.Onderwerp}”",
                     Sjabloon = "contact-notificatie-beheerder",
                     Velden = new Dictionary<string, string>
@@ -92,7 +79,7 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
                         ["inhoud"] = bericht.Inhoud
                     }
                 });
-            logger.LogInformation("Notificatie aan beheerder verzonden naar {Adres} na bericht {Id}.", AfzenderAdres, bericht.Id);
+            logger.LogInformation("Notificatie aan beheerder verzonden naar {Adres} na bericht {Id}.", AfzenderAdres(), bericht.Id);
         }
         catch (Exception ex)
         {
@@ -101,23 +88,16 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
     }
 
     /// <summary>
-    /// Zelfde notificatie, maar met expliciete toegangsbevestiging dat de beheerder is ingelogd.
+    /// Bevestiging aan de beheerder dat hij is ingelogd.
     /// </summary>
     public async Task VerstuurBevestigingAanBeheerderAsync(string beheerderNaam, string berichtNaam, string berichtOnderwerp)
     {
-        if (string.IsNullOrWhiteSpace(AfzenderAdres))
-        {
-            logger.LogWarning("Geen afzenderadres geconfigureerd; bevestigingsmail aan beheerder overgeslagen.");
-            return;
-        }
-
         try
         {
             await VerstuurAsync(
                 new MailBericht
                 {
-                    Aan = AfzenderAdres,
-                    Van = AfzenderAdres,
+                    Aan = AfzenderAdres(),
                     Onderwerp = $"Ingelogd als {beheerderNaam} — bevestiging",
                     Sjabloon = "beheerder-inlogbevestiging",
                     Velden = new Dictionary<string, string>
@@ -128,7 +108,7 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
                         ["berichtOnderwerp"] = berichtOnderwerp
                     }
                 });
-            logger.LogInformation("Inlogbevestigingsmail verzonden naar {Adres}.", AfzenderAdres);
+            logger.LogInformation("Inlogbevestigingsmail verzonden naar {Adres}.", AfzenderAdres());
         }
         catch (Exception ex)
         {
@@ -137,23 +117,22 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
     }
 
     /// <summary>
-    /// Verstuurt een echte testmail en gooit de fout van de SMTP-server door naar de
-    /// aanroeper, zodat de beheerder in de UI ziet wat er misgaat (verkeerd
-    /// App-wachtwoord, geen verbinding, ...).
+    /// Verstuurt een echte testmail naar het ingestelde afzenderadres en gooit de fout
+    /// van de SMTP-server door naar de aanroeper, zodat de beheerder in de UI ziet wat
+    /// er misgaat (verkeerde SMTP-key, niet-geverifieerde afzender, geen verbinding, ...).
     /// </summary>
     public async Task VerstuurTestmailAsync(string naar)
     {
-        var (gmailAdres, _) = gmailGeheimen.Lezen();
-        if (string.IsNullOrWhiteSpace(gmailAdres))
+        var (afzender, smtpGebruiker, smtpWachtwoord) = emailGeheimen.Lezen();
+        if (string.IsNullOrWhiteSpace(afzender) || string.IsNullOrWhiteSpace(smtpGebruiker) || string.IsNullOrWhiteSpace(smtpWachtwoord))
         {
             throw new InvalidOperationException(
-                "Er is nog geen Gmail-adres gekoppeld. Koppel eerst een Gmail-adres met App-wachtwoord.");
+                "De e-mailkoppeling is niet compleet. Stel eerst het afzenderadres, de Brevo SMTP-login en de SMTP-key in via /admin/email.");
         }
 
         await VerstuurAsync(new MailBericht
         {
             Aan = naar,
-            Van = gmailAdres,
             Onderwerp = "Testmail vanuit het e-mailbeheer",
             Sjabloon = "testmail",
             Velden = new Dictionary<string, string>
@@ -163,14 +142,22 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
         });
     }
 
+    private string AfzenderAdres()
+    {
+        var (afzender, _, _) = emailGeheimen.Lezen();
+        return string.IsNullOrWhiteSpace(afzender)
+            ? db.Profielen.FirstOrDefault()?.Email?.Trim() ?? string.Empty
+            : afzender;
+    }
+
     private async Task VerstuurAsync(MailBericht bericht)
     {
-        var (smtpGebruiker, smtpWachtwoord) = gmailGeheimen.Lezen();
+        var (afzender, smtpGebruiker, smtpWachtwoord) = emailGeheimen.Lezen();
 
-        if (string.IsNullOrWhiteSpace(smtpGebruiker) || string.IsNullOrWhiteSpace(smtpWachtwoord))
+        if (string.IsNullOrWhiteSpace(afzender) || string.IsNullOrWhiteSpace(smtpGebruiker) || string.IsNullOrWhiteSpace(smtpWachtwoord))
         {
             throw new InvalidOperationException(
-                "Geen Gmail-adres of App-wachtwoord is gekoppeld. Koppel eerst een Gmail-adres via /admin/email.");
+                "De e-mailkoppeling is niet compleet. Stel het afzenderadres, de Brevo SMTP-login en de SMTP-key in via /admin/email.");
         }
 
         if (string.IsNullOrWhiteSpace(bericht.Aan))
@@ -182,13 +169,13 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
 
         try
         {
-            await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+            await client.ConnectAsync(SmtpServer, SmtpPoort, SecureSocketOptions.StartTls);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Verbinding met Gmail SMTP-server (smtp.gmail.com:587) mislukt.");
+            logger.LogError(ex, "Verbinding met Brevo SMTP-relay ({Server}:{Poort}) mislukt.", SmtpServer, SmtpPoort);
             throw new InvalidOperationException(
-                $"Verbinding met smtp.gmail.com:587 mislukt: {ex.Message}", ex);
+                $"Verbinding met {SmtpServer}:{SmtpPoort} mislukt: {ex.Message}", ex);
         }
 
         try
@@ -197,56 +184,78 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
         }
         catch (Exception ex)
         {
-            await client.DisconnectAsync(true);
-            logger.LogWarning(ex, "Authenticatie bij Gmail SMTP-server mislukt voor gebruiker {Gebruiker}.", smtpGebruiker);
+            if (client.IsConnected)
+            {
+                await client.DisconnectAsync(true);
+            }
 
+            logger.LogWarning(ex, "Authenticatie bij Brevo SMTP mislukt voor gebruiker {Gebruiker}.", smtpGebruiker);
             throw new InvalidOperationException(BepaalAuthFout(ex, smtpGebruiker), ex);
         }
 
         try
         {
-            var mailBericht = NieuwBericht(bericht, smtpGebruiker);
+            var mailBericht = NieuwBericht(bericht, afzender);
             await client.SendAsync(mailBericht);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Verzending van e-mailbericht mislukt (onderwerp {Onderwerp}).", bericht.Onderwerp);
-            throw new InvalidOperationException(BepaalVerzendFout(ex), ex);
+            throw new InvalidOperationException(BepaalVerzendFout(ex, afzender), ex);
         }
         finally
         {
-            await client.DisconnectAsync(true);
+            if (client.IsConnected)
+            {
+                await client.DisconnectAsync(true);
+            }
         }
     }
 
     private static bool Bevat(string tekst, string fragment) =>
         tekst.Contains(fragment, StringComparison.OrdinalIgnoreCase);
 
-    private static string BepaalVerzendFout(Exception ex)
+    private static string BepaalVerzendFout(Exception ex, string afzender)
     {
         var msg = ex.Message;
 
-        // Eerst de fouten die de Gmail-server zelf terugstuurt: die zijn het
-        // duidelijkst voor de gebruiker.
-        if (Bevat(msg, "535") || Bevat(msg, "5.7.8") || Bevat(msg, "Username and Password not accepted"))
+        // Fouten die de Brevo-server zelf terugstuurt zijn het duidelijkst.
+        if (Bevat(msg, "535") || Bevat(msg, "5.7.8") || Bevat(msg, "authentication failed") ||
+            Bevat(msg, "not authenticated") || Bevat(msg, "BadCredentials"))
         {
-            return "Authenticatie bij Gmail mislukt. Controleer of het App-wachtwoord correct is en of je Gmail-account 2-stapsverificatie heeft ingeschakeld.";
+            return "Inloggen bij de Brevo SMTP-relay mislukt. Controleer de SMTP-login en de SMTP-key " +
+                "(Brevo → Settings → SMTP & API → SMTP). Gebruik een SMTP-key, niet je accountwachtwoord " +
+                "en niet een API-key.";
         }
 
-        if (Bevat(msg, "not authenticated") || Bevat(msg, "authentication failed"))
+        if (Bevat(msg, "sender") || Bevat(msg, "from address") || Bevat(msg, "not verified"))
         {
-            return "Authenticatie bij Gmail mislukt. Controleer of het App-wachtwoord correct is en of je Gmail-account 2-stapsverificatie heeft ingeschakeld.";
+            return $"Brevo weigert het afzenderadres {afzender}. Voeg dat adres toe en verifieer het bij " +
+                "Brevo onder Settings → Senders, Domains & IPs → Senders. Een adres op je eigen domein " +
+                "werkt pas nadat het adres (of het hele domein) geverifieerd is.";
+        }
+
+        if (Bevat(msg, "not activated") || Bevat(msg, "activate") || Bevat(msg, "transactional"))
+        {
+            return "Transactional e-mail is nog niet geactiveerd voor dit Brevo-account. Vraag de activatie " +
+                "aan via het Brevo-dashboard of de Brevo-support, en probeer daarna opnieuw.";
+        }
+
+        if (Bevat(msg, "quota") || Bevat(msg, "daily limit") || Bevat(msg, "too many"))
+        {
+            return "De daglimiet van je Brevo-abonnement is bereikt (gratis: 300 mails per dag). " +
+                "Probeer het morgen opnieuw of upgrades je Brevo-plan.";
         }
 
         if (Bevat(msg, "timeout") || Bevat(msg, "timed out"))
         {
-            return "Verzending time-out. Controleer je internetverbinding en of Gmail SMTP (smtp.gmail.com:587) bereikbaar is.";
+            return $"Verzending time-out. Controleer je internetverbinding en of {SmtpServer} op poort {SmtpPoort} bereikbaar is.";
         }
 
         if (Bevat(msg, "connection refused") || Bevat(msg, "network is unreachable") ||
             Bevat(msg, "no such host") || Bevat(msg, "failed to connect"))
         {
-            return "Verbinding met Gmail SMTP-server mislukt. Controleer je internetverbinding en firewall-instellingen.";
+            return $"Verbinding met {SmtpServer} mislukt. Controleer je internetverbinding en de firewall van de host.";
         }
 
         return $"Verzending mislukt: {msg}";
@@ -254,47 +263,45 @@ public class EmailService(SiteDbContext db, ILogger<EmailService> logger, GmailG
 
     private static string BepaalAuthFout(Exception ex, string gebruiker)
     {
-        // Veelvoorkomende Gmail SMTP-fouten omheen zodat de gebruiker iets doen kan.
         // Let op de volgorde: "disconnected" bevat ook "connect", dus de
         // inlogfouten moeten eerst gecontroleerd worden.
         var msg = ex.Message;
 
-        if (Bevat(msg, "535") || Bevat(msg, "5.7.8") ||
-            Bevat(msg, "Username and Password not accepted") || Bevat(msg, "BadCredentials"))
+        if (Bevat(msg, "535") || Bevat(msg, "5.7.8") || Bevat(msg, "authentication failed") ||
+            Bevat(msg, "not authenticated") || Bevat(msg, "BadCredentials"))
         {
-            return $"Authenticatie mislukt voor {gebruiker}. Het App-wachtwoord wordt niet geaccepteerd. " +
-                "Controleer of 2-stapsverificatie aanstaat op https://myaccount.google.com/security, " +
-                "maak daar een nieuw App-wachtwoord aan en vul dat in bij /admin/email.";
-        }
-
-        if (Bevat(msg, "not authenticated") || Bevat(msg, "authentication failed"))
-        {
-            return "Authenticatie bij Gmail mislukt. Controleer of het App-wachtwoord correct is en of je Gmail-account 2-stapsverificatie heeft ingeschakeld.";
+            return $"Inloggen bij Brevo mislukt voor {gebruiker}. Controleer de SMTP-login en de SMTP-key: " +
+                "Brevo → Settings → SMTP & API → SMTP → Generate a new SMTP key. Gebruik de SMTP-key, " +
+                "niet je accountwachtwoord of een API-key, en let op spaties of een afgekapte key.";
         }
 
         if (Bevat(msg, "timeout") || Bevat(msg, "timed out"))
         {
-            return "Verbinding met Gmail time-out tijdens inloggen. Controleer je internetverbinding.";
+            return "Verbinding met Brevo time-out tijdens het inloggen. Controleer je internetverbinding.";
         }
 
         if (Bevat(msg, "connection refused") || Bevat(msg, "network is unreachable") ||
             Bevat(msg, "no such host") || Bevat(msg, "failed to connect"))
         {
-            return "Verbinding met Gmail SMTP-server mislukt tijdens inloggen. Controleer je internetverbinding en firewall-instellingen.";
+            return "Verbinding met Brevo mislukt tijdens het inloggen. Controleer je internetverbinding en de firewall van de host.";
         }
 
-        return $"Authenticatie bij Gmail mislukt voor {gebruiker}: {msg}";
+        return $"Inloggen bij Brevo mislukt voor {gebruiker}: {msg}";
     }
 
     private MimeMessage NieuwBericht(MailBericht bericht, string afzenderAdres)
     {
         var message = new MimeMessage();
-        // Gmail laat alleen mail toe van het account waarmee je inlogt (of een
-        // geverifieerde alias). Daarom is de afzender altijd het gekoppelde
-        // Gmail-adres, met de naam uit het profiel als weergavenaam.
+        // De afzender is het eigen adres dat in /admin/email is ingesteld en bij
+        // Brevo geverifieerd is; de weergavenaam komt uit het profiel.
         message.From.Add(new MailboxAddress(AfzenderWeergave, afzenderAdres));
         message.To.Add(new MailboxAddress("", bericht.Aan));
         message.Subject = bericht.Onderwerp;
+
+        if (!string.IsNullOrWhiteSpace(bericht.AntwoordAan))
+        {
+            message.ReplyTo.Add(MailboxAddress.Parse(bericht.AntwoordAan));
+        }
 
         var body = SjabloonTekst(bericht.Sjabloon, bericht.Velden);
         message.Body = new TextPart("plain") { Text = body };
@@ -324,7 +331,7 @@ Bericht:
 
 Verzonden op: {velden["tijd"]}
 
-Als je dit leest, werkt de Gmail-koppeling: e-mails worden echt verstuurd van je eigen Gmail-adres.",
+Als je dit leest, werkt de koppeling met Brevo: e-mails worden echt verstuurd van je eigen adres.",
 
             "beheerder-inlogbevestiging" => $@"Inlogbevestiging voor {velden["naam"]}
 
@@ -346,7 +353,7 @@ Onderwerp: {velden["berichtOnderwerp"]}",
 public sealed class MailBericht
 {
     public required string Aan { get; init; }
-    public required string Van { get; init; }
+    public string? AntwoordAan { get; init; }
     public required string Onderwerp { get; init; }
     public required string Sjabloon { get; init; }
     public Dictionary<string, string> Velden { get; init; } = new();

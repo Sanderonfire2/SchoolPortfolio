@@ -33,9 +33,9 @@ if (verbinding.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
 }
 builder.Services.AddDbContext<SiteDbContext>(options => options.UseSqlite(verbinding));
 
-builder.Services.AddSingleton<GmailGeheimen>();
+builder.Services.AddSingleton<EmailGeheimen>();
 
-// Sleutelring voor Data Protection (antiforgery + versleutelde Gmail-geheimen).
+// Sleutelring voor Data Protection (antiforgery + versleutelde e-mailinstellingen).
 // Deze moet op een beschrijfbare én blijvende plaats staan: anders verandert de
 // sleutel na elke herstart en faalt elk antiforgery-token (elke login-POST).
 // De vaste applicatienaam zorgt ervoor dat de sleutels ook na een deploy naar een
@@ -64,13 +64,6 @@ else
     // Terugvallen op de standaardopslag van de host, zodat de site toch start.
     builder.Services.AddDataProtection().SetApplicationName("SchoolPortfolio");
 }
-
-builder.Services.AddSingleton(sp =>
-{
-    var provider = sp.GetRequiredService<IDataProtectionProvider>();
-    var protector = provider.CreateProtector("GmailGeheimen");
-    return protector;
-});
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

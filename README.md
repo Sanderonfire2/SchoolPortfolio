@@ -31,24 +31,29 @@ Zonder die variabele start de site gewoon, maar toont `/admin/inloggen` een duid
 in plaats van een foutpagina. Een alternatief is een `appsettings.Production.json` op de server
 (Die staat in `.gitignore`, dus hij komt nooit op GitHub.)
 
-## E-mail: echt versturen via je eigen Gmail
+## E-mail: echt versturen via Brevo vanaf je eigen adres
 
-Ga naar **/admin/email** en koppel je Gmail-adres:
+Mails gaan via de gratis SMTP-relay van [Brevo](https://www.brevo.com/) (300 mails per dag, geen
+creditcard). De afzender is je eigen adres; de SMTP-gegevens staan nooit in de repository.
 
-1. Zet 2-stapsverificatie aan op <https://myaccount.google.com/security>.
-2. Maak een App-wachtwoord aan op <https://myaccount.google.com/apppasswords>
-   (kies bijvoorbeeld “Mail” en “Windows Computer”).
-3. Vul je Gmail-adres en dat 16-tekens App-wachtwoord in bij /admin/email en klik op
-   **Gmail koppelen**. Spaties in het App-wachtwoord mogen.
-4. Klik op **Testmail verzenden**. De mail wordt echt verstuurd vanaf je Gmail-adres; bij een
-   fout zie je de melding van de Gmail-server zelf (bijvoorbeeld een verkeerd App-wachtwoord).
+Eenmalig instellen:
 
-De koppeling wordt versleuteld bewaard in `App_Data/gmail-geheimen.json` met ASP.NET Core Data
+1. Maak een gratis Brevo-account aan.
+2. Voeg je afzenderadres toe onder **Settings → Senders, Domains & IPs → Senders** en verifieer
+   het met de code die je per mail krijgt. Wil je vanaf het hele domein versturen, authenticeer dan
+   het domein met de DNS-records (DKIM/DMARC) die Brevo toont.
+3. Ga naar **Settings → SMTP & API → SMTP**, kopieer de **Login** en genereer een **SMTP-key**.
+4. Vul op **/admin/email** je afzenderadres, de SMTP-login en de SMTP-key in en klik op
+   **E-mail koppelen**.
+5. Klik op **Testmail verzenden**. De mail wordt echt verstuurd; bij een fout zie je de melding van
+   de Brevo-server zelf (verkeerde SMTP-key, niet-geverifieerde afzender, ...).
+
+De koppeling wordt versleuteld bewaard in `App_Data/email-geheimen.json` met ASP.NET Core Data
 Protection. Dat bestand staat niet in de repository en overleeft een herstart. Op een host zonder
-schrijfbare `App_Data` kun je in plaats daarvan `Gmail__Adres` en `Gmail__AppWachtwoord` als
-omgevingsvariabelen instellen.
+schrijfbare `App_Data` kun je in plaats daarvan de omgevingsvariabelen `Email__Afzender`,
+`Email__SmtpGebruiker` en `Email__SmtpWachtwoord` instellen.
 
-De host moet uitgaande verbindingen op poort 587 (STARTTLS) naar `smtp.gmail.com` toelaten.
+De host moet uitgaande verbindingen op poort 587 (STARTTLS) naar `smtp-relay.brevo.com` toelaten.
 
 ## AREI-pdf's
 
@@ -65,7 +70,8 @@ in de database naar een andere host zou wijzen. Een vervangen pdf via **/admin/a
 | Database | `ConnectionStrings:Default` (`app.db` in de projectmap) | `Data Source=app.db` |
 | Beheerderswachtwoord (productie) | omgevingsvariabele `Beheer__Wachtwoord` | `Beheer__Wachtwoord="…"` |
 | Beheerderswachtwoord (lokale dev) | `appsettings.Development.json` → `Beheer:Wachtwoord` | dev-wachtwoord staat daar al |
-| Gmail-koppeling | /admin/email (versleuteld in `App_Data/gmail-geheimen.json`) | — |
+| E-mailkoppeling (Brevo) | /admin/email (versleuteld in `App_Data/email-geheimen.json`) | afzender + SMTP-login + SMTP-key |
+| E-mailkoppeling via omgeving | `Email__Afzender`, `Email__SmtpGebruiker`, `Email__SmtpWachtwoord` | — |
 
 ## Beveiliging
 
@@ -82,7 +88,7 @@ in de database naar een andere host zou wijzen. Een vervangen pdf via **/admin/a
 - Uploads: witte lijst van extensies (geen `.svg`, die kan scriptcode bevatten), limieten
   per soort (8 MB beeld, 64 MB video, 16 MB pdf) en een willekeurige bestandsnaam;
   padtraversal is onmogelijk omdat alleen de bestandsnaam uit het publieke pad wordt gebruikt.
-- Gmail-gegevens staan versleuteld in `App_Data` en nooit in de repository of in de browser.
+- E-mailgegevens (afzender, Brevo SMTP-login en SMTP-key) staan versleuteld in `App_Data` en nooit in de repository of in de browser.
 
 ## Deploy naar productie
 

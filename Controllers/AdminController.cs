@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +17,7 @@ namespace SchoolPortfolio.Controllers;
 
 [Authorize]
 [Route("admin")]
-public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads, EmailService email, ILogger<AdminController> logger, GmailGeheimen gmailGeheimen) : Controller
+public class AdminController(SiteDbContext db, IConfiguration configuratie, UploadService uploads, EmailService email, ILogger<AdminController> logger, EmailGeheimen emailGeheimen) : Controller
 {
     private string? Wachtwoord => LeesWachtwoord(configuratie);
 
@@ -159,51 +160,56 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         var adres = profiel?.Email?.Trim();
         var voorstelling = profiel?.VolledigeNaam?.Trim() ?? "Sander Van Praet";
 
-        var (gmailAdres, _) = gmailGeheimen.Lezen();
+        var (afzender, smtpGebruiker, _) = emailGeheimen.Lezen();
 
         return View(new EmailWeergave
         {
             Adres = adres ?? "(nog niet ingesteld)",
             Voorstelling = voorstelling,
-            GmailAdres = gmailAdres ?? "(nog niet gekoppeld)",
-            GmailIsGekoppeld = gmailGeheimen.IsGekoppeld,
-            SmtpServer = "smtp.gmail.com",
+            Afzender = afzender ?? "",
+            SmtpGebruiker = smtpGebruiker ?? "",
+            SmtpServer = "smtp-relay.brevo.com",
             SmtpPoort = "587",
-            SmtpGesteld = gmailGeheimen.IsGekoppeld,
-            SmtpGebruiker = gmailAdres ?? ""
+            IsGekoppeld = emailGeheimen.IsGekoppeld
         });
     }
 
     [HttpPost("email")]
     [ValidateAntiForgeryToken]
-    public IActionResult GmailOpslaan(string gmailAdres, string gmailAppWachtwoord)
+    public IActionResult EmailOpslaan(string afzenderAdres, string smtpGebruiker, string? smtpWachtwoord)
     {
         ViewData["Titel"] = "E-mail";
 
-        if (string.IsNullOrWhiteSpace(gmailAdres) || !gmailAdres.Contains('@'))
+        if (string.IsNullOrWhiteSpace(afzenderAdres) || !afzenderAdres.Contains('@'))
         {
-            TempData["Foutmelding"] = "Voer een geldig Gmail-adres in (bijvoorbeeld naam@gmail.com).";
+            TempData["Foutmelding"] = "Voer een geldig afzenderadres in (bijvoorbeeld sander@jouwdomein.be).";
             return RedirectToAction(nameof(Email));
         }
 
-        // Bij het wijzigen van alleen het adres mag het bestaande App-wachtwoord blijven staan.
-        var bestaandWachtwoord = gmailGeheimen.Lezen().AppWachtwoord;
-        if (string.IsNullOrWhiteSpace(gmailAppWachtwoord))
+        if (string.IsNullOrWhiteSpace(smtpGebruiker))
+        {
+            TempData["Foutmelding"] = "Vul de Brevo SMTP-login in (het adres dat bij SMTP in je Brevo-dashboard staat).";
+            return RedirectToAction(nameof(Email));
+        }
+
+        // Bij het wijzigen van alleen het adres mag de bestaande SMTP-key blijven staan.
+        var bestaandWachtwoord = emailGeheimen.Lezen().SmtpWachtwoord;
+        if (string.IsNullOrWhiteSpace(smtpWachtwoord))
         {
             if (string.IsNullOrWhiteSpace(bestaandWachtwoord))
             {
-                TempData["Foutmelding"] = "Vul ook het Google App-wachtwoord in (16 tekens). Zonder App-wachtwoord kan er geen mail verzonden worden.";
+                TempData["Foutmelding"] = "Vul ook de Brevo SMTP-key in. Zonder SMTP-key kan er geen mail verzonden worden.";
                 return RedirectToAction(nameof(Email));
             }
 
-            gmailAppWachtwoord = bestaandWachtwoord;
+            smtpWachtwoord = bestaandWachtwoord;
         }
 
         try
         {
-            gmailGeheimen.Opslaan(gmailAdres.Trim(), gmailAppWachtwoord);
-            logger.LogInformation("Gmail-adres gekoppeld: {Adres}.", gmailAdres);
-            TempData["Melding"] = "Gmail-adres en App-wachtwoord zijn opgeslagen. Sla eventueel je profiel-opzenderadres op in /admin/profiel.";
+            emailGeheimen.Opslaan(afzenderAdres.Trim(), smtpGebruiker.Trim(), smtpWachtwoord);
+            logger.LogInformation("E-mailinstellingen opgeslagen: afzender {Afzender}, SMTP-login {Gebruiker}.", afzenderAdres.Trim(), smtpGebruiker.Trim());
+            TempData["Melding"] = "E-mailinstellingen opgeslagen. Verstuur een testmail om de koppeling met Brevo te controleren.";
 
             // Koppel ook het profiel als nog niet ingesteld, zodat de afzender consistent is.
             var profiel = db.Profielen.FirstOrDefault();
@@ -212,22 +218,22 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
                 db.Profielen.Add(new Profiel
                 {
                     VolledigeNaam = "Sander Van Praet",
-                    Email = gmailAdres.Trim(),
+                    Email = afzenderAdres.Trim(),
                     BijgewerktOp = DateTime.Now
                 });
                 db.SaveChanges();
             }
             else if (string.IsNullOrWhiteSpace(profiel.Email))
             {
-                profiel.Email = gmailAdres.Trim();
+                profiel.Email = afzenderAdres.Trim();
                 profiel.BijgewerktOp = DateTime.Now;
                 db.SaveChanges();
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Gmail-instelling kon niet worden opgeslagen.");
-            TempData["Foutmelding"] = "De Gmail-instelling kon niet worden opgeslagen. Zie de serverlog voor details.";
+            logger.LogError(ex, "E-mailinstellingen konden niet worden opgeslagen.");
+            TempData["Foutmelding"] = "De e-mailinstellingen konden niet worden opgeslagen. Zie de serverlog voor details.";
         }
 
         return RedirectToAction(nameof(Email));
@@ -235,20 +241,20 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
 
     [HttpPost("email/verwijderen")]
     [ValidateAntiForgeryToken]
-    public IActionResult GmailVerwijderen()
+    public IActionResult EmailVerwijderen()
     {
         ViewData["Titel"] = "E-mail";
 
         try
         {
-            gmailGeheimen.Verwijderen();
-            logger.LogInformation("Gmail-adres en App-wachtwoord zijn verwijderd.");
-            TempData["Melding"] = "Gmail-adres en App-wachtwoord zijn verwijderd.";
+            emailGeheimen.Verwijderen();
+            logger.LogInformation("E-mailinstellingen zijn verwijderd.");
+            TempData["Melding"] = "De e-mailkoppeling is verwijderd.";
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Gmail-instelling kon niet worden verwijderd.");
-            TempData["Foutmelding"] = "De Gmail-instelling kon niet worden verwijderd. Zie de serverlog voor details.";
+            logger.LogError(ex, "E-mailinstellingen konden niet worden verwijderd.");
+            TempData["Foutmelding"] = "De e-mailinstellingen konden niet worden verwijderd. Zie de serverlog voor details.";
         }
 
         return RedirectToAction(nameof(Email));
@@ -258,40 +264,41 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EmailTest()
     {
-        var profiel = db.Profielen.FirstOrDefault();
-        var adres = profiel?.Email?.Trim();
         ViewData["Titel"] = "E-mail";
+        var (afzender, _, _) = emailGeheimen.Lezen();
 
-        if (string.IsNullOrWhiteSpace(adres))
+        if (!emailGeheimen.IsGekoppeld || string.IsNullOrWhiteSpace(afzender))
         {
-            TempData["Foutmelding"] = "Stel eerst een e-mailadres in op /admin/profiel voordat je de testmail kunt verzenden.";
-            return RedirectToAction(nameof(Email));
-        }
-
-        if (!gmailGeheimen.IsGekoppeld)
-        {
-            TempData["Foutmelding"] = "Er is geen Gmail-adres gekoppeld. Koppel eerst een Gmail-adres via het formulier hierboven.";
+            TempData["Foutmelding"] = "De e-mailkoppeling is nog niet compleet. Stel eerst het afzenderadres, de Brevo SMTP-login en de SMTP-key in.";
             return RedirectToAction(nameof(Email));
         }
 
         try
         {
-            await email.VerstuurTestmailAsync(adres!);
+            await email.VerstuurTestmailAsync(afzender);
 
-            TempData["Melding"] = $"Testmail verzonden naar {adres}. Controleer je inbox (en eventueel de spammap).";
+            TempData["Melding"] = $"Testmail verzonden naar {afzender}. Controleer je inbox (en eventueel de spammap).";
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Testmail kon niet worden verzonden.");
 
-            // Toon de leesbare oorzaak én de ruwe melding van de Gmail-server,
-            // zodat een verkeerd App-wachtwoord of een geblokkeerde verbinding
+            // Toon de leesbare oorzaak én de ruwe melding van de Brevo-server,
+            // zodat een verkeerde SMTP-key of een niet-geverifieerde afzender
             // meteen duidelijk is.
             var fouttekst = ex.Message;
-            if (ex.InnerException is not null &&
-                !fouttekst.Contains(ex.InnerException.Message, StringComparison.OrdinalIgnoreCase))
+            if (ex.InnerException is SmtpCommandException smtpFout)
             {
-                fouttekst += $" (Gmail-server: {ex.InnerException.Message})";
+                var ruweReactie = smtpFout.Message;
+                if (!fouttekst.Contains(ruweReactie, StringComparison.OrdinalIgnoreCase))
+                {
+                    fouttekst += $" (Brevo/SMTP {(int)smtpFout.StatusCode}: {ruweReactie})";
+                }
+            }
+            else if (ex.InnerException is not null &&
+                     !fouttekst.Contains(ex.InnerException.Message, StringComparison.OrdinalIgnoreCase))
+            {
+                fouttekst += $" (SMTP: {ex.InnerException.Message})";
             }
 
             fouttekst = fouttekst.Replace("\r", " ").Replace("\n", " ");
@@ -1407,13 +1414,11 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         public string Adres { get; set; } = "";
         public string Voorstelling { get; set; } = "";
 
+        public string Afzender { get; set; } = "";
+        public string SmtpGebruiker { get; set; } = "";
         public string SmtpServer { get; set; } = "";
         public string SmtpPoort { get; set; } = "";
-        public string SmtpGebruiker { get; set; } = "";
-        public bool SmtpGesteld { get; set; }
-
-        public string GmailAdres { get; set; } = "";
-        public bool GmailIsGekoppeld { get; set; }
+        public bool IsGekoppeld { get; set; }
     }
 
     public class DashboardWeergave
