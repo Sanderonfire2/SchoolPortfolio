@@ -1069,7 +1069,9 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     {
         ViewData["Titel"] = "FAQ beheren";
         ViewBag.Lijst = db.FaqItems.OrderBy(f => f.Volgorde).ThenBy(f => f.Id).ToList();
-        return View("Faq", new FaqItem());
+        // Nieuwe vragen komen achteraan; toon dat meteen in het formulier.
+        var volgende = db.FaqItems.Any() ? db.FaqItems.Max(f => f.Volgorde) + 1 : 1;
+        return View("Faq", new FaqItem { Volgorde = volgende });
     }
 
     [HttpGet("faq/{id:int}/bewerken")]
@@ -1097,7 +1099,7 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
 
         if (formulier.Id == 0)
         {
-            formulier.Volgorde = db.FaqItems.Count() + 1;
+            if (formulier.Volgorde < 1) formulier.Volgorde = db.FaqItems.Count() + 1;
             db.FaqItems.Add(formulier);
         }
         else
@@ -1136,7 +1138,9 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     {
         ViewData["Titel"] = "Downloads beheren";
         ViewBag.Lijst = db.DownloadItems.OrderBy(d => d.Volgorde).ThenBy(d => d.Id).ToList();
-        return View("Downloads", new DownloadItem());
+        // Nieuwe downloads komen achteraan; toon dat meteen in het formulier.
+        var volgende = db.DownloadItems.Any() ? db.DownloadItems.Max(d => d.Volgorde) + 1 : 1;
+        return View("Downloads", new DownloadItem { Volgorde = volgende });
     }
 
     [HttpGet("downloads/{id:int}/bewerken")]
@@ -1155,11 +1159,24 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
     public async Task<IActionResult> DownloadsOpslaan(DownloadItem formulier, IFormFile? bestand)
     {
         // Op “bewerken” is een bestaand bestand voldoende; een nieuwe rij MOET een bestand hebben.
-        var nieuwPad = await uploads.SlaDownloadOpAsync(bestand);
+        string? nieuwPad;
+        try
+        {
+            nieuwPad = await uploads.SlaDownloadOpAsync(bestand);
+        }
+        catch (InvalidOperationException fout)
+        {
+            ModelState.AddModelError(string.Empty, fout.Message);
+            ViewBag.Lijst = db.DownloadItems.OrderBy(d => d.Volgorde).ThenBy(d => d.Id).ToList();
+            return View("Downloads", formulier);
+        }
+
         var bestandLeeg = formulier.Id == 0 && string.IsNullOrWhiteSpace(nieuwPad);
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(formulier.Titel) || bestandLeeg)
         {
-            if (string.IsNullOrWhiteSpace(formulier.Titel)) ModelState.AddModelError("Titel", "Kies een titel.");
+            // Niets opslaan: een al geüpload bestand zou anders als wees achterblijven.
+            uploads.Verwijder(nieuwPad);
+            // De titel zelf wordt al door [Required] op het model afgevangen (Nederlandse melding).
             if (bestandLeeg) ModelState.AddModelError("BestandPad", "Kies een bestand.");
             ViewBag.Lijst = db.DownloadItems.OrderBy(d => d.Volgorde).ThenBy(d => d.Id).ToList();
             return View("Downloads", formulier);
@@ -1170,7 +1187,7 @@ public class AdminController(SiteDbContext db, IConfiguration configuratie, Uplo
         if (formulier.Id == 0)
         {
             formulier.BestandPad = nieuwPad!;
-            formulier.Volgorde = db.DownloadItems.Count() + 1;
+            if (formulier.Volgorde < 1) formulier.Volgorde = db.DownloadItems.Count() + 1;
             db.DownloadItems.Add(formulier);
         }
         else

@@ -1,83 +1,166 @@
 @model SchoolPortfolio.Models.DownloadItem
 @{
+    Layout = "_LayoutBeheer";
     var lijst = (List<SchoolPortfolio.Models.DownloadItem>)ViewBag.Lijst!;
     var isNieuw = Model.Id == 0;
+    var algemeneFouten = ViewData.ModelState
+        .Where(m => string.IsNullOrEmpty(m.Key))
+        .SelectMany(m => m.Value!.Errors)
+        .Select(e => e.ErrorMessage)
+        .Where(e => !string.IsNullOrWhiteSpace(e))
+        .ToList();
 }
 
-<section class="pagina">
-    <div class="container">
-        <h1>Downloads beheren</h1>
-        <p class="tekst-sub">Bestanden die op /downloads verschijnen. Toegestaan: pdf, zip, docx, xlsx, txt, png, jpg, webp (max 24 MB).</p>
-        @if (TempData["Melding"] is string melding)
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inhoud</span>
+        <h1>Downloads</h1>
+    </div>
+    @if (!isNieuw)
+    {
+        <a class="knop knop--primair" href="/admin/downloads">Nieuwe download</a>
+    }
+</div>
+
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+@if (TempData["Foutmelding"] is string foutmelding)
+{
+    <div class="kenbaar kenbaar--fout" role="status">@foutmelding</div>
+}
+@if (algemeneFouten.Count > 0)
+{
+    <div class="kenbaar kenbaar--fout" role="alert">
+        @foreach (var fout in algemeneFouten)
         {
-            <div class="melding">@melding</div>
+            <div>@fout</div>
         }
     </div>
-</section>
+}
 
-<section class="pagina" style="padding-top:0;">
-    <div class="container">
-        <h2>@(isNieuw ? "Nieuwe download" : $"Download bewerken: {Model.Titel}")</h2>
-        <form method="post" asp-action="DownloadsOpslaan" enctype="multipart/form-data">
-            @Html.AntiForgeryToken()
-            <input type="hidden" asp-for="Id" />
+<p class="tekst-sub tekst-sm" style="max-width:46rem;">
+    Bestanden die op <a class="koppellink" href="/downloads" target="_blank" rel="noopener">/downloads</a> verschijnen.
+    Toegestaan: pdf, zip, docx, xlsx, txt, png, jpg, jpeg en webp, maximaal 24 MB.
+</p>
+
+<section class="beheer-kaart">
+    <h2>@(isNieuw ? "Nieuwe download" : "Download bewerken")</h2>
+    @if (!isNieuw)
+    {
+        <p class="tekst-sub tekst-sm" style="margin-top:-0.7rem;">@Model.Titel</p>
+    }
+
+    <form method="post" asp-controller="Admin" asp-action="DownloadsOpslaan" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div class="veld">
+            <label asp-for="Titel">Titel</label>
+            <input class="invoer" asp-for="Titel" placeholder="Bijvoorbeeld: AREI-boek 1 (pdf)" />
+            <span class="veldfout" asp-validation-for="Titel"></span>
+        </div>
+
+        <div class="veld">
+            <label asp-for="Omschrijving">Omschrijving <span class="tekst-zacht">(optioneel)</span></label>
+            <textarea class="invoer" asp-for="Omschrijving" rows="2"></textarea>
+        </div>
+
+        <div class="veld">
+            <label for="bestand">Bestand @(isNieuw ? "" : "(leeg laten = huidig bestand behouden)")</label>
+            @if (!isNieuw && !string.IsNullOrWhiteSpace(Model.BestandPad))
+            {
+                <p class="tekst-sub tekst-sm" style="margin-bottom:0.4rem;">
+                    Huidig bestand:
+                    <a class="koppellink" href="@Model.BestandPad" target="_blank" rel="noopener">@System.IO.Path.GetFileName(Model.BestandPad)</a>
+                </p>
+            }
+            <input class="invoer upload-invoer" type="file" id="bestand" name="bestand"
+                   accept=".pdf,.zip,.docx,.xlsx,.txt,.png,.jpg,.jpeg,.webp" @(isNieuw ? "required" : "") />
+            <span class="veldfout" asp-validation-for="BestandPad"></span>
+        </div>
+
+        <div class="beheer-kolommen">
             <div class="veld">
-                <label asp-for="Titel">Titel</label>
-                <input asp-for="Titel" required />
-            </div>
-            <div class="veld">
-                <label asp-for="Omschrijving">Omschrijving (optioneel)</label>
-                <textarea asp-for="Omschrijving" rows="2"></textarea>
-            </div>
-            <div class="veld">
-                <label asp-for="BestandPad">Bestand @(isNieuw ? "(verplicht)" : "(leeg laten = huidig bestand behouden)")</label>
-                <input type="file" name="bestand" accept=".pdf,.zip,.docx,.xlsx,.txt,.png,.jpg,.jpeg,.webp" @(isNieuw ? "required" : "") />
-            </div>
-            <div class="veld veld--klein">
                 <label asp-for="Volgorde">Volgorde</label>
-                <input asp-for="Volgorde" type="number" min="1" />
+                <input class="invoer" asp-for="Volgorde" type="number" min="1" />
             </div>
             <div class="veld">
-                <label><input asp-for="IsGepubliceerd" type="checkbox" /> Gepubliceerd</label>
+                <label class="veldnaam" style="display:flex; align-items:center; gap:0.5rem; margin-top:1.9rem;">
+                    <input asp-for="IsGepubliceerd" type="checkbox" /> Gepubliceerd
+                </label>
             </div>
-            <button class="knop" type="submit">Opslaan</button>
+        </div>
+
+        <div class="beheer-acties" style="justify-content:flex-start; margin-top:0.4rem;">
+            <button class="knop knop--primair" type="submit">@(isNieuw ? "Download toevoegen" : "Wijzigingen opslaan")</button>
             @if (!isNieuw)
             {
                 <a class="knop knop--stil" href="/admin/downloads">Annuleren</a>
             }
-        </form>
-    </div>
+        </div>
+    </form>
 </section>
 
-<section class="pagina" style="padding-top:0;">
-    <div class="container">
-        <h2>Bestaande downloads (@lijst.Count)</h2>
-        @if (lijst.Count == 0)
-        {
-            <p class="tekst-sub">Nog geen downloads. Voeg hierboven de eerste toe.</p>
-        }
-        <table class="tabel">
-            <thead>
-                <tr><th>Volgorde</th><th>Titel</th><th>Bestand</th><th>Status</th><th></th></tr>
-            </thead>
-            <tbody>
-                @foreach (var item in lijst)
-                {
-                    <tr>
-                        <td>@item.Volgorde</td>
-                        <td>@item.Titel</td>
-                        <td>@System.IO.Path.GetFileName(item.BestandPad)</td>
-                        <td>@(item.IsGepubliceerd ? "Gepubliceerd" : "Verborgen")</td>
-                        <td class="tabel-acties">
+<div class="sectie-kop" style="margin-top:3rem;">
+    <h2>Bestaande downloads</h2>
+    <span class="stempel">@lijst.Count</span>
+</div>
+
+@if (lijst.Count == 0)
+{
+    <p class="tekst-sub">Nog geen downloads. Voeg hierboven de eerste toe.</p>
+}
+else
+{
+    <table class="beheer-tabel">
+        <thead>
+            <tr>
+                <th>Volgorde</th>
+                <th>Titel</th>
+                <th>Bestand</th>
+                <th>Status</th>
+                <th style="text-align:right;">Acties</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in lijst)
+            {
+                <tr>
+                    <td>@item.Volgorde</td>
+                    <td class="cel-sterk">
+                        @item.Titel
+                        @if (!string.IsNullOrWhiteSpace(item.Omschrijving))
+                        {
+                            <div class="tekst-sub tekst-sm">@item.Omschrijving</div>
+                        }
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(item.BestandPad))
+                        {
+                            <a class="koppellink" href="@item.BestandPad" target="_blank" rel="noopener">@System.IO.Path.GetFileName(item.BestandPad)</a>
+                        }
+                        else
+                        {
+                            <span class="tekst-zacht">—</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="stempel @(item.IsGepubliceerd ? "stempel--accent" : null)">@(item.IsGepubliceerd ? "Gepubliceerd" : "Verborgen")</span>
+                    </td>
+                    <td>
+                        <div class="beheer-acties">
                             <a class="knop knop--klein" href="/admin/downloads/@item.Id/bewerken">Bewerken</a>
-                            <form method="post" asp-action="DownloadVerwijderen" asp-route-id="@item.Id" onsubmit="return confirm('Deze download en het bestand verwijderen?');">
+                            <form method="post" asp-controller="Admin" asp-action="DownloadVerwijderen" asp-route-id="@item.Id"
+                                  onsubmit="return confirm('Download “@item.Titel” en het bestand verwijderen?');">
                                 @Html.AntiForgeryToken()
-                                <button class="knop knop--klein knop--gevaar" type="submit">Uitvegen</button>
+                                <button class="knop knop--klein knop--gevaar" type="submit">Verwijderen</button>
                             </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</section>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

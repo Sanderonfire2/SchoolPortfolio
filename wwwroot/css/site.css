@@ -155,6 +155,8 @@ img {
 
 .tekst-sub { color: var(--tekst-sub); }
 
+.tekst-zacht { color: var(--tekst-zacht); }
+
 .tekst-sm { font-size: var(--text-sm); }
 
 /* ---------- Sectiekop ---------- */
@@ -1095,6 +1097,10 @@ textarea.invoer {
 
 .kenbaar--ok::before { content: "✓ "; color: var(--accent-tekst); }
 
+.kenbaar--fout { border-color: var(--gevaar); color: var(--tekst); }
+
+.kenbaar--fout::before { content: "! "; color: var(--gevaar); font-weight: 700; }
+
 /* ---------- Call-to-action ---------- */
 
 .cta-strook {
@@ -1268,6 +1274,10 @@ textarea.invoer {
   gap: 0.15rem;
   position: sticky;
   top: calc(var(--nav-hoogte) + 1rem);
+  /* Op een laag venster moeten ook de onderste links bereikbaar blijven. */
+  max-height: calc(100vh - var(--nav-hoogte) - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 @media (max-width: 46em) {
@@ -1374,6 +1384,39 @@ textarea.invoer {
 @media (max-width: 40em) {
   .beheer-kolommen { grid-template-columns: 1fr; }
 }
+
+/* Kaarten binnen beheer: formulieren en AREI-boeken in hetzelfde thema. */
+.beheer-kaart {
+  max-width: 46rem;
+  margin-top: 1.6rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--lijn);
+  border-radius: var(--hoek);
+  background: color-mix(in srgb, var(--oppervlak) 55%, transparent);
+}
+
+.beheer-kaart h2,
+.beheer-kaart h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+
+/* Kaartkop met een lange titel: de statusstempel blijft rechtsboven staan. */
+.beheer-kaart-kop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.beheer-kaart-kop > div { min-width: 0; }
+
+.beheer-kaart-kop h2 { margin-bottom: 0; }
+
+.beheer-kaart-kop .stempel { flex: none; margin-top: 0.2rem; }
+
+.beheer-kaart .veld:last-of-type { margin-bottom: 1rem; }
 
 /* --- Uitklapbare berichtenkaarten (beheer) --- */
 .berichten-lijst {

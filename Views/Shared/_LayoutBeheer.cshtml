@@ -1,7 +1,17 @@
 @{
     var titel = ViewData["Titel"] as string;
     var pad = (Context.Request.Path.Value ?? "/").ToLowerInvariant().TrimEnd('/');
-    string Actief(string doel) => pad.StartsWith(doel) ? "is-actief" : "";
+    string Actief(string doel)
+    {
+        // /admin is alleen actief op het overzicht zelf; anders licht bij elke
+        // beheerpagina ook "Overzicht" op.
+        if (doel == "/admin")
+        {
+            return pad == "/admin" ? "is-actief" : "";
+        }
+
+        return pad == doel || pad.StartsWith(doel + "/", StringComparison.Ordinal) ? "is-actief" : "";
+    }
 }
 <!DOCTYPE html>
 <html lang="nl" data-thema="dark">

@@ -157,7 +157,11 @@ public class PaginaInhoud
 public class FaqItem
 {
     public int Id { get; set; }
+
+    [Required(ErrorMessage = "Vul een vraag in.")]
     public string Vraag { get; set; } = "";
+
+    [Required(ErrorMessage = "Vul een antwoord in.")]
     public string Antwoord { get; set; } = "";
     public bool IsGepubliceerd { get; set; } = true;
     public int Volgorde { get; set; }
@@ -167,6 +171,8 @@ public class FaqItem
 public class DownloadItem
 {
     public int Id { get; set; }
+
+    [Required(ErrorMessage = "Kies een titel.")]
     public string Titel { get; set; } = "";
     public string? Omschrijving { get; set; }
     public string BestandPad { get; set; } = "";

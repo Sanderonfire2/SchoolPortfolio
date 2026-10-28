@@ -1,54 +1,76 @@
-@using SchoolPortfolio.Data
-@inject SiteDbContext Db
+@using SchoolPortfolio.Models
 @{
-    var lijst = (List<SchoolPortfolio.Models.AreiBoek>)ViewBag.Lijst!;
+    Layout = "_LayoutBeheer";
+    var lijst = (List<AreiBoek>)ViewBag.Lijst!;
 }
 
-<section class="pagina">
-    <div class="container">
-        <h1>AREI beheren</h1>
-        <p class="tekst-sub">De drie AREI-boeken die op /arei staan. Hieronder kun je per boek de beschrijving aanpassen en het pdf-bestand vervangen door een nieuw bestand (pdf, max 16 MB).</p>
-        @if (TempData["Melding"] is string melding)
-        {
-            <div class="melding">@melding</div>
-        }
-        @if (TempData["Foutmelding"] is string fout)
-        {
-            <div class="melding melding--fout">@fout</div>
-        }
+<div class="kopregel">
+    <div>
+        <span class="over-label">Inhoud</span>
+        <h1>AREI</h1>
     </div>
-</section>
+    <a class="knop knop--stil" href="/arei" target="_blank" rel="noopener">Bekijk /arei ↗</a>
+</div>
 
-<section class="pagina" style="padding-top:0;">
-    <div class="container">
-        @foreach (var boek in lijst)
-        {
-            <article class="arei-beheer-rij">
+@if (TempData["Melding"] is string melding)
+{
+    <div class="kenbaar kenbaar--ok" role="status">@melding</div>
+}
+@if (TempData["Foutmelding"] is string fout)
+{
+    <div class="kenbaar kenbaar--fout" role="status">@fout</div>
+}
+
+<p class="tekst-sub tekst-sm" style="max-width:46rem;">
+    De drie AREI-boeken die op <a class="koppellink" href="/arei" target="_blank" rel="noopener">/arei</a> staan.
+    Pas per boek de beschrijving aan of vervang het pdf-bestand (maximaal 16 MB).
+</p>
+
+@if (lijst.Count == 0)
+{
+    <p class="tekst-sub">Er zijn nog geen AREI-boeken gevonden.</p>
+}
+
+@foreach (var boek in lijst)
+{
+    var heeftBestand = !string.IsNullOrWhiteSpace(boek.BestandPad);
+    <section class="beheer-kaart">
+        <div class="beheer-kaart-kop">
+            <div>
+                <span class="over-label">Boek @boek.Volgorde</span>
                 <h2>@boek.Naam</h2>
-                <p class="tekst-sub">
-                    Bestand:
-                    @if (!string.IsNullOrWhiteSpace(boek.BestandPad))
-                    {
-                        <a href="@boek.BestandPad" target="_blank" rel="noopener">@System.IO.Path.GetFileName(boek.BestandPad)</a>
-                    }
-                    else
-                    {
-                        <em>geen bestand gekoppeld</em>
-                    }
-                </p>
-                <form method="post" asp-action="AreiOpslaan" asp-route-id="@boek.Id" enctype="multipart/form-data">
-                    @Html.AntiForgeryToken()
-                    <div class="veld">
-                        <label for="beschrijving-@boek.Id">Beschrijving</label>
-                        <input type="text" id="beschrijving-@boek.Id" name="beschrijving" value="@boek.Beschrijving" />
-                    </div>
-                    <div class="veld">
-                        <label for="bestand-@boek.Id">Nieuwe pdf (leeg laten = behouden)</label>
-                        <input type="file" id="bestand-@boek.Id" name="bestand" accept=".pdf" />
-                    </div>
-                    <button class="knop" type="submit">Bijwerken</button>
-                </form>
-            </article>
-        }
-    </div>
-</section>
+            </div>
+            <span class="stempel @(heeftBestand ? "stempel--accent" : null)">
+                @(heeftBestand ? "Pdf gekoppeld" : "Geen pdf")
+            </span>
+        </div>
+
+        <p class="tekst-sub tekst-sm" style="margin-bottom:1.2rem;">
+            Bestand:
+            @if (heeftBestand)
+            {
+                <a class="koppellink" href="@boek.BestandPad" target="_blank" rel="noopener">@System.IO.Path.GetFileName(boek.BestandPad)</a>
+            }
+            else
+            {
+                <em>geen bestand gekoppeld</em>
+            }
+        </p>
+
+        <form method="post" asp-controller="Admin" asp-action="AreiOpslaan" asp-route-id="@boek.Id" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div class="veld">
+                <label for="beschrijving-@boek.Id">Beschrijving</label>
+                <input class="invoer" type="text" id="beschrijving-@boek.Id" name="beschrijving" value="@boek.Beschrijving" />
+            </div>
+
+            <div class="veld">
+                <label for="bestand-@boek.Id">Nieuwe pdf <span class="tekst-zacht">(leeg laten = behouden)</span></label>
+                <input class="invoer upload-invoer" type="file" id="bestand-@boek.Id" name="bestand" accept=".pdf" />
+            </div>
+
+            <button class="knop knop--primair" type="submit">Bijwerken</button>
+        </form>
+    </section>
+}
